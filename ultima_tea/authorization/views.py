@@ -17,7 +17,6 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
     """
 
     def has_object_permission(self, request, view, obj):
-        # Write permissions are only allowed to the owner of the snippet.
         return obj.id == request.user.id or request.user.is_superuser
 
 
@@ -27,7 +26,6 @@ class UserViewSet(viewsets.ModelViewSet):
     permission_classes_by_action = {"create": [AllowAny], "list": [IsAdminUser]}
 
     def get_permissions(self):
-
         try:
             # return permission_classes depending on `action`
             return [
@@ -37,6 +35,7 @@ class UserViewSet(viewsets.ModelViewSet):
         except KeyError:
             # action is not set return default permission_classes
             return [IsOwnerOrReadOnly()]
+
 
 @receiver(reset_password_token_created)
 def password_reset_token_created(sender, instance, reset_password_token, *args, **kwargs):

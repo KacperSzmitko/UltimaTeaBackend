@@ -15,6 +15,8 @@ import os
 from datetime import timedelta
 
 SIMPLE_JWT = {
+    #TODO Change lifetime
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=2),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=15),
     'ROTATE_REFRESH_TOKENS': True,
 }
@@ -90,7 +92,7 @@ DATABASES = {
         'NAME': 'server',
         'USER': 'postgres',
         'PASSWORD': 'postgres',
-        'HOST': '192.168.0.7',
+        'HOST': '192.168.1.14',
         'PORT': '5438',
     },
 }

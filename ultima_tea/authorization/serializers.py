@@ -1,12 +1,12 @@
-from rest_framework import fields, serializers
-from .models import CustomUser
-
+from rest_framework import fields, serializers, validators
+from .models import CustomUser, Machine
 
 class UserSerializer(serializers.ModelSerializer):
-    
+    #machine = serializers.CharField(validators=[required,check_machine_id])
     class Meta:
         model = CustomUser
-        fields = '__all__'
+        fields = ('pk', 'email', 'password', 'machine')
+        extra_kwargs = {'machine': {'required': True}}
 
     def create(self, validated_data):
         user = super().create(validated_data)
