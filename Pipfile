@@ -6,6 +6,7 @@ verify_ssl = true
 [dev-packages]
 pylint = "*"
 black = "*"
+pylint-django = "*"
 
 [packages]
 django = "*"
@@ -14,6 +15,7 @@ psycopg2 = "*"
 djangorestframework-simplejwt = "*"
 django-cors-headers = "*"
 django-rest-passwordreset = "*"
+pillow = "*"
 
 [requires]
 python_version = "3.9"

@@ -38,26 +38,47 @@ class CustomUserManager(BaseUserManager):
 
 
 class Machine(models.Model):
-    machine_id =  models.CharField(primary_key=True, max_length=32)
-    brewing_temperature =  models.FloatField(default=0, null=True)
-    air_temperature =  models.FloatField(default=0, null=True)
-    mug_temperature =  models.FloatField(default=0, null=True)
-    water_container_weight =  models.FloatField(default=0, null=True)
-    first_container_weight =  models.FloatField(default=0, null=True)
-    second_container_weight =  models.FloatField(default=0, null=True)
-    third_container_weight =  models.FloatField(default=0, null=True)
-    is_mug_ready =  models.BooleanField(default=False, null=True)
-    is_user_active =  models.BooleanField(default=False, null=True)
-    state_of_the_tea_making_process =  models.IntegerField(default=0, null=True)
+    class StatesOfTeaMakingProcess(models.IntegerChoices):
+        READY_TO_WORK = 0
+        SENDING_REQUEST = 1
+        ADDING_TEA_HERBS = 2
+        BOILING_WATER = 3
+        BREWING = 4
+        MIXING = 5
+        DONE = 6
+
+    class MachineStates(models.IntegerChoices):
+        OFF = 0
+        ON = 1
+
+    machine_id = models.CharField(primary_key=True, max_length=32)
+    brewing_temperature = models.FloatField(default=0, null=True)
+    air_temperature = models.FloatField(default=0, null=True)
+    mug_temperature = models.FloatField(default=0, null=True)
+    water_container_weight = models.FloatField(default=0, null=True)
+    is_mug_ready = models.BooleanField(default=False, null=True)
+    state_of_the_tea_making_process = models.IntegerField(
+        default=StatesOfTeaMakingProcess.READY_TO_WORK,
+        null=True,
+        choices=StatesOfTeaMakingProcess.choices,
+    )
+    machine_status = models.IntegerField(
+        default=0, choices=MachineStates.choices, null=True
+    )
 
     class Meta:
         db_table = "machine"
 
+    def __str__(self):
+        return self.machine_id
+        
 class CustomUser(AbstractUser):
     username = None
     email = models.EmailField(_("email"), unique=True)
-    machine = models.ForeignKey(Machine, null=True, blank=False, on_delete=models.SET_NULL)
-    image = models.ImageField(height_field=150, width_field=150)
+    machine = models.ForeignKey(
+        Machine, null=True, blank=False, on_delete=models.SET_NULL
+    )
+    #image = models.ImageField(height_field=150, width_field=150, default=None, null=True, blank=True)
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
 
@@ -65,6 +86,3 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return self.email
-
-
-
