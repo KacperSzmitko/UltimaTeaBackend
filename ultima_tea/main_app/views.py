@@ -1,16 +1,13 @@
 from django.db.models.query import QuerySet
-from rest_framework.serializers import Serializer
 from rest_framework.views import APIView
 from rest_framework import permissions
 from rest_framework.response import Response
-from rest_framework import generics
+from rest_framework import generics, mixins
 from .serializers import *
 from authorization.models import Machine, CustomUser
-from .models import MachineContainers
-from rest_framework import status
+from .models import *
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets
-from rest_framework import status
 from rest_framework.exceptions import APIException
 # TODO When user likes own recipe like goes to orginal one
 # TODO Tea portion dynamicly
@@ -98,7 +95,7 @@ class GetMachineInfo(APIView):
         IsOwnerOrAdmin,
     ]
 
-    def get(self, request, pk, format=None):
+    def get(self, request, pk):
         queryset = Machine.objects.all()
         machine = get_object_or_404(queryset, pk=pk)
         self.check_object_permissions(request, machine)
@@ -139,6 +136,7 @@ class ListPublicRecipes(generics.ListAPIView):
     List public recipes with filters
     """
 
+    #serializer_class = RecipesSerializer2
     serializer_class = RecipesSerializer
     permission_classes = [permissions.IsAuthenticated]
     queryset = Recipes.objects.filter(is_public=True)
@@ -152,9 +150,11 @@ class ListPublicRecipes(generics.ListAPIView):
             raise WrongQuerystringValue()
 
 
-class UserRecipes(viewsets.ModelViewSet):
+class UserRecipesViewSet(viewsets.ModelViewSet):
     """
-    Used to do all staff with logged user recipes. Doesnt have access to other recipes
+    Used to do all staff with logged user recipes. Doesnt have access to other recipes.
+    Use PATCH to update existing ingredients in recipes
+    Use PUT to create new recipe or pass id to edit existing
     """
 
     permission_classes_by_action = {
@@ -166,6 +166,7 @@ class UserRecipes(viewsets.ModelViewSet):
         "retrieve": [IsAuthorOrAdmin],
     }
     queryset = Recipes.objects.all()
+    #serializer_class = RecipesSerializer2
     serializer_class = RecipesSerializer
 
     def get_permissions(self):
@@ -188,8 +189,23 @@ class UserRecipes(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 
-    """
-    def get_queryset(self):
-        user = self.request.user
-        return Recipes.objects.filter(is_public=True)
-    """
+
+class IngredientsViewSet(viewsets.ModelViewSet):
+    serializer_class = IngredientSerializer
+    queryset = Ingredients.objects.all()
+    permission_classes_by_action = {
+        "list": [permissions.IsAuthenticated],
+    }
+
+    def get_permissions(self):
+        if self.action in self.permission_classes_by_action:
+            return [permission() for permission in self.permission_classes_by_action[self.action]]
+        else:
+            return [permissions.IsAdminUser()]
+
+
+
+class SendRecipeView(APIView):
+
+    def create(self, request):
+        return Response()

@@ -1,7 +1,5 @@
 from django.core.exceptions import ObjectDoesNotExist
-from django.db import models
-from django.http import request
-from rest_framework import fields, serializers, validators
+from rest_framework import serializers
 from authorization.models import Machine
 from main_app.models import *
 
@@ -22,7 +20,7 @@ class IngredientSerializer(serializers.ModelSerializer):
     type = serializers.SerializerMethodField()
 
     class Meta:
-        model = Ingerdients
+        model = Ingredients
         fields = (
             "ingredient_name",
             "type",
@@ -52,12 +50,12 @@ class IngredientsRecipesSerializer(serializers.ModelSerializer):
             """
             if "ingredient" in attrs:
                 try:
-                    Ingerdients.objects.get(**attrs["ingredient"])
+                    Ingredients.objects.get(**attrs["ingredient"])
                 except ObjectDoesNotExist:
                     raise serializers.ValidationError("Ingredient does not exist")
         else:
             try:
-                Ingerdients.objects.get(**attrs["ingredient"])
+                Ingredients.objects.get(**attrs["ingredient"])
             except ObjectDoesNotExist:
                 raise serializers.ValidationError("Ingredient does not exist")
         return super().validate(attrs)
@@ -82,7 +80,7 @@ class RecipesSerializer(serializers.ModelSerializer):
         # For every ingredient iwth ammount create new IngredientRecipe object
         for ingredients_data in ingredients_recipes_data:
             # Get specified Ingredient object
-            ingredient = Ingerdients.objects.get(**ingredients_data["ingredient"])
+            ingredient = Ingredients.objects.get(**ingredients_data["ingredient"])
             IngredientsRecipes.objects.create(
                 recipe=recipe,
                 ammount=ingredients_data["ammount"],
@@ -91,43 +89,72 @@ class RecipesSerializer(serializers.ModelSerializer):
         return recipe
 
     def update(self, instance, validated_data):
-        ingredients_recipes_data = validated_data.pop("ingredients")
-        recipe = super().update(instance, validated_data)
-        for ingredients_data in ingredients_recipes_data:
-            # If method is PATCH make validation which fields was specified
-            if self.context["request"].method == "PATCH":
-                if "id" in ingredients_data:
-                    instance = IngredientsRecipes.objects.filter(
-                        pk=ingredients_data["id"]
+        if self.partial:
+            """
+            PATCH method
+            """
+            try:
+                ingredients_recipes_data = validated_data.pop("ingredients")
+                recipe = super().update(instance, validated_data)
+                if ingredients_recipes_data == []:
+                    """
+                    Empty inredients
+                    """
+                    return recipe
+            except KeyError:
+                """
+                No ingredients
+                """
+                recipe = super().update(instance, validated_data)
+                return recipe
+            for ingredients_data in ingredients_recipes_data:
+                if "id" not in ingredients_data:
+                    """
+                    No id of recipe to edit - raise error
+                    """
+                    raise serializers.ValidationError({"id": "Field is required."})
+                instance = IngredientsRecipes.objects.filter(pk=ingredients_data["id"])
+                if "ingredient" in ingredients_data:
+                    ingredient = Ingredients.objects.get(
+                        **ingredients_data["ingredient"]
                     )
-                    if "ingredient" in ingredients_data:
-                        ingredient = Ingerdients.objects.get(
-                            **ingredients_data["ingredient"]
-                        )
-                    else:
-                        ingredient = False
                 else:
-                    raise serializers.ValidationError(
-                        {"ingredients": [{"id": "Field is required."}]}
-                    )
+                    ingredient = None
 
                 if "ammount" in ingredients_data:
                     ammount = ingredients_data["ammount"]
-                    if ingredient != False:
+                    if ingredient != None:
                         instance.update(ingredient=ingredient, ammount=ammount)
                     else:
                         instance.update(ammount=ammount)
                 else:
-                    if ingredient != False:
+                    if ingredient != None:
                         instance.update(ingredient=ingredient)
                         return recipe
-            else:
-                # For PUT just update existing records
-                ingredient = Ingerdients.objects.get(**ingredients_data["ingredient"])
-                ingredient_recpie = IngredientsRecipes.objects.filter(
-                    pk=ingredients_data["id"]
-                )
-                ingredient_recpie.update(
+        else:
+            """
+            PUT method
+            """
+            try:
+                ingredients_recipes_data = validated_data.pop("ingredients")
+                recipe = super().update(instance, validated_data)
+                IngredientsRecipes.objects.filter(recipe=recipe).delete()
+                if ingredients_recipes_data == []:
+                    """
+                    Empty ingredients - delete all existing
+                    """
+                    return recipe
+            except KeyError:
+                """
+                No ingredients is prohibited
+                """
+                raise serializers.ValidationError({"ingredients": "Field is required"})
+            for ingredients_data in ingredients_recipes_data:
+                ingredient = Ingredients.objects.get(**ingredients_data["ingredient"])
+                """
+                Id not specified - create new one
+                """
+                IngredientsRecipes.objects.create(
                     recipe=recipe,
                     ammount=ingredients_data["ammount"],
                     ingredient=ingredient,

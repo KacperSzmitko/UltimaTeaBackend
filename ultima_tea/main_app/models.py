@@ -2,6 +2,7 @@ from django.db import models
 
 # Create your models here.
 from django.db import models
+from django.db.models import fields
 from authorization.models import CustomUser, Machine
 from django.db.models.deletion import CASCADE, SET_DEFAULT
 
@@ -15,7 +16,8 @@ class UnitTypes(models.IntegerChoices):
     METRICAL = 1
     IMPERIAL = 2
 
-class Ingerdients(models.Model):
+
+class Ingredients(models.Model):
     ingredient_name = models.CharField(max_length=64)
     type = models.IntegerField(choices=State.choices)
 
@@ -24,6 +26,7 @@ class Ingerdients(models.Model):
 
     def __str__(self):
         return self.ingredient_name
+
 
 class Teas(models.Model):
     tea_name = models.CharField(max_length=255, primary_key=True)
@@ -38,7 +41,12 @@ class Teas(models.Model):
 class Recipes(models.Model):
     author = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     orginal_author = models.ForeignKey(
-        CustomUser, on_delete=models.SET_NULL, null=True, blank=True, default=None, related_name='original_author'
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        default=None,
+        related_name="original_author",
     )
     last_modification = models.DateTimeField(auto_now_add=True)
     descripction = models.TextField(max_length=1023, default="Brak")
@@ -60,6 +68,7 @@ class Recipes(models.Model):
             "-is_favourite",
             "recipe_name",
         )
+        indexes = [models.Index(fields=["author"])]
 
     def __str__(self):
         return self.recipe_name
@@ -67,13 +76,16 @@ class Recipes(models.Model):
 
 # In db all ammounts will be stored in one type of unit, and will be converted on demand. Default in SI
 class IngredientsRecipes(models.Model):
-    recipe = models.ForeignKey(Recipes, on_delete=models.CASCADE, related_name='ingredients')
-    ingredient = models.ForeignKey(Ingerdients, on_delete=models.CASCADE)
+    recipe = models.ForeignKey(
+        Recipes, on_delete=models.CASCADE, related_name="ingredients"
+    )
+    ingredient = models.ForeignKey(Ingredients, on_delete=models.CASCADE)
     # Unit in which recipe was created
     ammount = models.FloatField()
 
     class Meta:
         db_table = "ingredients_recipes"
+        indexes = [models.Index(fields=["recipe"])]
 
     def __str__(self):
         return self.recipe.recipe_name
@@ -84,7 +96,6 @@ class Units(models.Model):
     unit_type = models.IntegerField(choices=UnitTypes.choices)
     # TODO Delete default
     ratio_to_metrical = models.FloatField(default=0.035274)
-
 
 
 class UserSettings(models.Model):
@@ -101,23 +112,24 @@ class UserSettings(models.Model):
 class MachineContainers(models.Model):
 
     CONTAINER_NAME_CHOICES = (
-        (1, 'first_container_weight'),
-        (2, 'second_container_weight'),
-        (3, 'third_container_weight'),
+        (1, "first_container_weight"),
+        (2, "second_container_weight"),
+        (3, "third_container_weight"),
     )
 
     machine = models.ForeignKey(Machine, on_delete=models.CASCADE)
-    ingredient = models.ForeignKey(Ingerdients, on_delete=models.CASCADE, null=True, default=None)
-    ammount = models.FloatField(default=0, null=True)
-    container_number = models.IntegerField(
-        default=0, choices=CONTAINER_NAME_CHOICES
+    ingredient = models.ForeignKey(
+        Ingredients, on_delete=models.CASCADE, null=True, default=None
     )
+    ammount = models.FloatField(default=0, null=True)
+    container_number = models.IntegerField(default=0, choices=CONTAINER_NAME_CHOICES)
 
     class Meta:
         db_table = "machine_container"
-    
+
     def __str__(self):
         return self.machine.machine_id
+
 
 class FavoriteRecipes(models.Model):
     recipe = models.ForeignKey(Recipes, on_delete=CASCADE)
