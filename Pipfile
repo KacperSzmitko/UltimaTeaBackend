@@ -16,6 +16,8 @@ djangorestframework-simplejwt = "*"
 django-cors-headers = "*"
 django-rest-passwordreset = "*"
 pillow = "*"
+requests = "*"
+celery = "*"
 
 [requires]
 python_version = "3.9"

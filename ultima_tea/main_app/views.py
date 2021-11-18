@@ -2,15 +2,20 @@ from django.db.models.query import QuerySet
 from rest_framework.views import APIView
 from rest_framework import permissions
 from rest_framework.response import Response
-from rest_framework import generics, mixins
+from rest_framework import generics, mixins, pagination
 from .serializers import *
 from authorization.models import Machine, CustomUser
 from .models import *
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets
-from rest_framework.exceptions import APIException
+from rest_framework.exceptions import APIException, ValidationError
+from rest_framework.decorators import action
+from django.db.models import Q
+from .tasks import send_recipe
+
 # TODO When user likes own recipe like goes to orginal one
 # TODO Tea portion dynamicly
+# TODO Ipdate machine container ingredient
 
 
 def filter_recipes(params: dict, queryset: QuerySet):
@@ -60,10 +65,12 @@ def filter_recipes(params: dict, queryset: QuerySet):
             continue
     return queryset
 
+
 class WrongQuerystringValue(APIException):
     status_code = 422
     default_detail = "Invalid query string. Value must be numeric type."
     default_code = "wrong_query_string"
+
 
 class IsOwnerOrAdmin(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
@@ -73,6 +80,17 @@ class IsOwnerOrAdmin(permissions.BasePermission):
         except CustomUser.DoesNotExist:
             if request.user.is_superuser:
                 return True
+        except AttributeError:
+            try:
+                obj.machine.customuser_set.get(pk=request.user.id)
+                return True
+            except CustomUser.DoesNotExist:
+                if request.user.is_superuser:
+                    return True
+            except AttributeError:
+                if obj.recipe.author.id == request.user.id:
+                    return True
+                return False
             return False
 
 
@@ -86,49 +104,67 @@ class IsAuthorOrAdmin(permissions.BasePermission):
         return False
 
 
-class GetMachineInfo(APIView):
+class MachineInfoViewSet(generics.ListAPIView):
     """
-    Get specific machine info
-    """
-
-    permission_classes = [
-        IsOwnerOrAdmin,
-    ]
-
-    def get(self, request, pk):
-        queryset = Machine.objects.all()
-        machine = get_object_or_404(queryset, pk=pk)
-        self.check_object_permissions(request, machine)
-        serializer = MachineInfoSerializer(machine)
-        return Response(serializer.data)
-
-class ListMachines(generics.ListAPIView):
-    """
-    List all machines
+    List all user machines info
     """
 
-    queryset = Machine.objects.all()
     serializer_class = MachineInfoSerializer
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [IsOwnerOrAdmin]
+    queryset = Machine.objects.all()
+
+    def get_queryset(self):
+        return Machine.objects.filter(customuser=self.request.user)
+
+
+class UpdateTeaContainersView(generics.UpdateAPIView):
+    """
+    List or edit tea containers
+    """
+
+    serializer_class = UpdateTeasConatainerSerializer
+    permission_classes = [IsOwnerOrAdmin]
+    queryset = MachineContainers.objects.all()
+
+    def get_queryset(self):
+        return MachineContainers.objects.filter(
+            Q(machine__customuser=self.request.user) & (Q(container_number__lte=2))
+        )
+
+
+class UpdateIngredientContainersView(generics.UpdateAPIView):
+    """
+    List or edit ingredient containers
+    """
+
+    serializer_class = UpdateIngredientsConatainerSerializer
+    permission_classes = [IsOwnerOrAdmin]
+    queryset = MachineContainers.objects.all()
+
+    def get_queryset(self):
+        return MachineContainers.objects.filter(
+            Q(machine__customuser=self.request.user) & (Q(container_number__gte=3))
+        )
 
 
 class GetMachineContainers(generics.ListAPIView):
-    """
-    Get info about machine containers. Pass machine id in URL
-    """
 
-    permission_classes = [
-        IsOwnerOrAdmin,
-    ]
-    serializer_class = MachineContainersSerializer
     queryset = MachineContainers.objects.all()
+    permission_classes = [IsOwnerOrAdmin]
+    serializer_class = IngredientsConatainerSerializer
 
-    def list(self, request, pk):
-        machine = Machine.objects.all()
-        self.check_object_permissions(request, get_object_or_404(machine, pk=pk))
-        queryset = MachineContainers.objects.filter(machine__pk=pk)
-        serializer = MachineContainersSerializer(queryset, many=True)
-        return Response(serializer.data)
+    def get_queryset(self):
+        return MachineContainers.objects.filter(machine__customuser=self.request.user)
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        ingredients = queryset.filter(container_number=3)
+        teas = queryset.filter(container_number__lte=2)
+        ingredients = IngredientsConatainerSerializer(ingredients, many=True)
+        teas = TeasConatainerSerializer(teas, many=True)
+        return Response(
+            {"tea_containers": teas.data, "ingredient_containers": ingredients.data}
+        )
 
 
 class ListPublicRecipes(generics.ListAPIView):
@@ -136,10 +172,16 @@ class ListPublicRecipes(generics.ListAPIView):
     List public recipes with filters
     """
 
-    #serializer_class = RecipesSerializer2
+    class RecipesSetPagination(pagination.PageNumberPagination):
+        page_size = 6
+        page_size_query_param = "size"
+        max_page_size = 6
+
+    # serializer_class = RecipesSerializer2
     serializer_class = RecipesSerializer
     permission_classes = [permissions.IsAuthenticated]
     queryset = Recipes.objects.filter(is_public=True)
+    pagination_class = RecipesSetPagination
 
     def get_queryset(self):
         try:
@@ -166,7 +208,7 @@ class UserRecipesViewSet(viewsets.ModelViewSet):
         "retrieve": [IsAuthorOrAdmin],
     }
     queryset = Recipes.objects.all()
-    #serializer_class = RecipesSerializer2
+    # serializer_class = RecipesSerializer2
     serializer_class = RecipesSerializer
 
     def get_permissions(self):
@@ -185,6 +227,10 @@ class UserRecipesViewSet(viewsets.ModelViewSet):
         serializer = self.serializer_class(queryset, many=True)
         return Response(serializer.data)
 
+    def get_serializer_class(self):
+        if self.request.method in ["PUT", "PATCH", "POST"]:
+            return WriteRecipesSerializer
+        return super().get_serializer_class()
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
@@ -199,13 +245,96 @@ class IngredientsViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in self.permission_classes_by_action:
-            return [permission() for permission in self.permission_classes_by_action[self.action]]
+            return [
+                permission()
+                for permission in self.permission_classes_by_action[self.action]
+            ]
         else:
             return [permissions.IsAdminUser()]
 
 
+class DeleteRecipeIngredient(generics.DestroyAPIView):
+    queryset = IngredientsRecipes.objects.all()
+    permission_classes = [IsOwnerOrAdmin]
+    serializer_class = IngredientsRecipesSerializer
+
+
+class ListTeas(generics.ListAPIView):
+    queryset = Teas.objects.all()
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = TeaSerializer
+
+
+class ListIngredients(generics.ListAPIView):
+    queryset = Ingredients.objects.all()
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = IngredientSerializer
+
 
 class SendRecipeView(APIView):
+    queryset = IngredientsRecipes.objects.all()
+    permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = PrepareRecipeSerializer
 
-    def create(self, request):
-        return Response()
+
+    def post(self, request, format=None):
+        self.check_permissions(request)
+        try:
+            id = request.data["id"]
+        except KeyError:
+            raise ValidationError({"id": "Field is required."})
+        try:
+            recipe = Recipes.objects.get(pk=id)
+        except ObjectDoesNotExist:
+            raise ValidationError({"detail": "Recipe does not exist."})
+
+        tea_containers = MachineContainers.objects.filter(
+            Q(machine=request.user.machine) & Q(container_number__lte=2)
+        )
+        no_tea = True
+        for tea_container in tea_containers:
+            if tea_container.tea == recipe.tea_type:
+                if tea_container.ammount >= recipe.tea_herbs_ammount:
+                    no_tea = False
+                else:
+                    raise ValidationError(
+                    {"detail": "Not enough tea herbs in container."}
+                )
+                break
+        if no_tea:
+            raise ValidationError(
+                {"detail": "Given tea type is not available in your tea containers."}
+            )
+
+        ingredient_containers = MachineContainers.objects.filter(
+            Q(machine=request.user.machine) & Q(container_number__gte=3)
+        )
+
+        ingredients = IngredientsRecipes.objects.filter(recipe=recipe)
+        no_ingredient = True
+        for ingredient in ingredients:
+            for ingredient_container in ingredient_containers:
+                if ingredient_container.ingredient == ingredient.ingredient:
+                    if ingredient_container.ammount >= ingredient.ammount:
+                        no_ingredient = False
+                    else:
+                        raise ValidationError(
+                        {"detail": "Not enough ingredient in container."}
+                    )
+                    break
+            if no_ingredient:
+                raise ValidationError(
+                    {
+                        "detail": "Some of given ingredients is not avaliable in yuor ingredient containers."
+                    }
+                )
+        machine = Machine.objects.get(pk=request.user.machine.machine_id)
+        if not machine.water_container_weight >= (recipe.tea_portion + 60):
+            raise ValidationError(
+                    {
+                        "detail": "Not enough water."
+                    }
+                )
+        serializer = PrepareRecipeSerializer(recipe)
+        send_recipe.delay(serializer.data)
+        return Response({}, status=200)

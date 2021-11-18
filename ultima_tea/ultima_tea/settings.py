@@ -157,3 +157,13 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'UltimaTeaService@gmail.com'
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_PASS','v!TvEC2kg=P8mw+^rd%DH@_#')
 DEFAULT_FROM_EMAIL = 'UltimaTeaService@gmail.com'
+
+
+# CELERY STUFF
+#BROKER_URL = 'redis://:5fUwXohpL6rh5xvK@192.168.1.250:6379'
+#CELERY_RESULT_BACKEND = 'redis://:5fUwXohpL6rh5xvK@192.168.1.250:6379'
+BROKER_URL = os.environ.get('BROKER_URL','pyamqp://guest@192.168.1.14')
+#CELERY_RESULT_BACKEND = os.environ.get['RESULT_BACKEND_URL']
+CELERY_ACCEPT_CONTENT = ['application/json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'

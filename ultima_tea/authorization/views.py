@@ -1,6 +1,6 @@
 from rest_framework.permissions import *
 from rest_framework import viewsets
-from .serializers import UserSerializer
+from .serializers import *
 from rest_framework import permissions
 from .models import CustomUser
 from django.core.mail import EmailMultiAlternatives
@@ -8,6 +8,7 @@ from django.dispatch import receiver
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django_rest_passwordreset.signals import reset_password_token_created
+from rest_framework_simplejwt.views import TokenViewBase
 
 class IsOwnerOrReadOnly(permissions.BasePermission):
     """
@@ -34,6 +35,19 @@ class UserViewSet(viewsets.ModelViewSet):
             # action is not set return default permission_classes
             return [IsOwnerOrReadOnly()]
 
+
+class TokenObtainPairView(TokenViewBase):
+    """
+        Return JWT tokens (access and refresh) for specific user based on username and password.
+    """
+    serializer_class = TokenObtainLifetimeSerializer
+
+
+class TokenRefreshView(TokenViewBase):
+    """
+        Renew tokens (access and refresh) with new expire time based on specific user's access token.
+    """
+    serializer_class = TokenRefreshLifetimeSerializer
 
 @receiver(reset_password_token_created)
 def password_reset_token_created(sender, instance, reset_password_token, *args, **kwargs):

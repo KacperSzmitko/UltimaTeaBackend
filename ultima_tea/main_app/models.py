@@ -29,7 +29,7 @@ class Ingredients(models.Model):
 
 
 class Teas(models.Model):
-    tea_name = models.CharField(max_length=255, primary_key=True)
+    tea_name = models.CharField(max_length=255)
 
     class Meta:
         db_table = "teas"
@@ -112,17 +112,21 @@ class UserSettings(models.Model):
 class MachineContainers(models.Model):
 
     CONTAINER_NAME_CHOICES = (
-        (1, "first_container_weight"),
-        (2, "second_container_weight"),
-        (3, "third_container_weight"),
+        (1, "first_container_weight"), #Tea 
+        (2, "second_container_weight"), #Tea
+        (3, "third_container_weight"), #Ingredient
     )
 
-    machine = models.ForeignKey(Machine, on_delete=models.CASCADE)
+    machine = models.ForeignKey(Machine, on_delete=models.CASCADE, related_name='machine_containers')
     ingredient = models.ForeignKey(
         Ingredients, on_delete=models.CASCADE, null=True, default=None
     )
+    tea = models.ForeignKey(
+        Teas, on_delete=models.CASCADE, null=True, default=None
+    )
     ammount = models.FloatField(default=0, null=True)
     container_number = models.IntegerField(default=0, choices=CONTAINER_NAME_CHOICES)
+
 
     class Meta:
         db_table = "machine_container"
