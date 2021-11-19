@@ -296,5 +296,12 @@ class PrepareRecipeSerializer(serializers.ModelSerializer):
             "tea_type",
             "ingredients",
             'tea_herbs_ammount',
-            'tea_portion'
+            'tea_portion',
+            'id'
         )
+
+class FavouritesSerializer(serializers.ModelSerializer):
+    is_favourite = serializers.BooleanField(required=True)
+    class Meta:
+        model = Recipes
+        fields = ("is_favourite",)

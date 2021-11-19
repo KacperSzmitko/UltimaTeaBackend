@@ -11,7 +11,7 @@ from rest_framework import viewsets
 from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.decorators import action
 from django.db.models import Q
-from .tasks import send_recipe
+from .tasks import *
 
 # TODO When user likes own recipe like goes to orginal one
 # TODO Tea portion dynamicly
@@ -126,6 +126,21 @@ class UpdateTeaContainersView(generics.UpdateAPIView):
     permission_classes = [IsOwnerOrAdmin]
     queryset = MachineContainers.objects.all()
 
+    def update(self, request,pk, *args, **kwargs):
+        data = super().update(request,pk, *args, **kwargs)
+        machine = request.user.machine
+        if machine.machine_status == Machine.MachineStates.OFF:
+            containers = MachineContainers.objects.filter(machine__customuser=self.request.user)
+            ingredients = containers.filter(container_number__gte=3)
+            teas = containers.filter(container_number__lte=2)
+            ingredients = IngredientsConatainerSerializer(ingredients, many=True)
+            teas = TeasConatainerSerializer(teas, many=True)
+            update_all_containers.delay({"tea_containers": teas.data, "ingredient_containers": ingredients.data},machine.machine_id)
+        else:
+            container = MachineContainers.objects.get(pk=pk)
+            update_single_container.delay(data.data,container.container_number, machine.machine_id)
+        return data
+
     def get_queryset(self):
         return MachineContainers.objects.filter(
             Q(machine__customuser=self.request.user) & (Q(container_number__lte=2))
@@ -146,6 +161,21 @@ class UpdateIngredientContainersView(generics.UpdateAPIView):
             Q(machine__customuser=self.request.user) & (Q(container_number__gte=3))
         )
 
+    def update(self, request,pk, *args, **kwargs):
+        data = super().update(request, pk, *args, **kwargs)
+        machine = request.user.machine
+        if machine.machine_status == Machine.MachineStates.OFF:
+            containers = MachineContainers.objects.filter(machine__customuser=self.request.user)
+            ingredients = containers.filter(container_number__gte=3)
+            teas = containers.filter(container_number__lte=2)
+            ingredients = IngredientsConatainerSerializer(ingredients, many=True)
+            teas = TeasConatainerSerializer(teas, many=True)
+            update_all_containers.delay({"tea_containers": teas.data, "ingredient_containers": ingredients.data},machine.machine_id)
+        else:
+            container = MachineContainers.objects.get(pk=pk)
+            update_single_container.delay(data.data, machine.id, container.container_number)
+        return data
+
 
 class GetMachineContainers(generics.ListAPIView):
 
@@ -158,7 +188,7 @@ class GetMachineContainers(generics.ListAPIView):
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
-        ingredients = queryset.filter(container_number=3)
+        ingredients = queryset.filter(container_number__gte=3)
         teas = queryset.filter(container_number__lte=2)
         ingredients = IngredientsConatainerSerializer(ingredients, many=True)
         teas = TeasConatainerSerializer(teas, many=True)
@@ -287,9 +317,13 @@ class SendRecipeView(APIView):
             recipe = Recipes.objects.get(pk=id)
         except ObjectDoesNotExist:
             raise ValidationError({"detail": "Recipe does not exist."})
-
+        machine = Machine.objects.get(pk=request.user.machine.machine_id)
+        if machine.machine_status == 0:
+            raise ValidationError({"detail": "Machine is not connected."})
+        if not machine.is_mug_ready:
+            raise ValidationError({"detail": "Mug is not ready."})
         tea_containers = MachineContainers.objects.filter(
-            Q(machine=request.user.machine) & Q(container_number__lte=2)
+            Q(machine=machine) & Q(container_number__lte=2)
         )
         no_tea = True
         for tea_container in tea_containers:
@@ -328,13 +362,42 @@ class SendRecipeView(APIView):
                         "detail": "Some of given ingredients is not avaliable in yuor ingredient containers."
                     }
                 )
-        machine = Machine.objects.get(pk=request.user.machine.machine_id)
         if not machine.water_container_weight >= (recipe.tea_portion + 60):
             raise ValidationError(
                     {
                         "detail": "Not enough water."
                     }
                 )
+        
         serializer = PrepareRecipeSerializer(recipe)
-        send_recipe.delay(serializer.data)
+        send_recipe.delay(serializer.data, machine.id)
         return Response({}, status=200)
+
+class AddToFavouritesView(generics.UpdateAPIView):
+
+    serializer_class = FavouritesSerializer
+    queryset = Recipes.objects.all()
+    permission_classes = [IsAuthorOrAdmin]
+
+    def get_queryset(self):
+        return Recipes.objects.filter(author=self.request.user)
+
+    def update(self, request,pk, *args, **kwargs):
+        data = super().update(request, *args, **kwargs)
+
+        machine = request.user.machine
+        if machine.machine_status == Machine.MachineStates.OFF:
+            # Machine is off
+            recipes = Recipes.objects.filter(Q(author=request.user) & Q(is_favourite=True))
+            recipes = PrepareRecipeSerializer(recipes, many=True)
+            favourites_edit_offline.delay(recipes.data, machine.machine_id)
+        else:
+            recipe = Recipes.objects.get(pk=pk)
+            recipe = PrepareRecipeSerializer(recipe)
+            if data.data['is_favourite']:
+                # Add to favourites
+                favourites_edit_online.delay(recipe.data, 'add',machine.machine_id)
+            else:
+                # Delete from favourites
+                favourites_edit_online.delay({'id': recipe.data['id']}, 'delete',machine.machine_id)
+        return data
