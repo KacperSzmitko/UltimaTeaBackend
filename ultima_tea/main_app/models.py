@@ -115,6 +115,7 @@ class MachineContainers(models.Model):
         (1, "first_container_weight"), #Tea 
         (2, "second_container_weight"), #Tea
         (3, "third_container_weight"), #Ingredient
+        (4, "fourth_container_weight"), #Ingredient
     )
 
     machine = models.ForeignKey(Machine, on_delete=models.CASCADE, related_name='machine_containers')
