@@ -14,6 +14,7 @@ from .serializers import *
 # TODO When user likes own recipe like goes to orginal one
 # TODO Tea portion dynamicly
 
+
 def filter_recipes(params: dict, queryset: QuerySet):
     """
     List public recipes. List of query parameters
@@ -336,6 +337,8 @@ class SendRecipeView(APIView):
             recipe = Recipes.objects.get(pk=id)
         except ObjectDoesNotExist:
             raise ValidationError({"detail": "Recipe does not exist."})
+        if recipe.author.id != request.user.id:
+            raise ValidationError({"detail": "Wrong recipe id."})
         machine = Machine.objects.get(pk=request.user.machine.machine_id)
         if machine.machine_status == 0:
             raise ValidationError({"detail": "Machine is not connected."})
@@ -378,14 +381,13 @@ class SendRecipeView(APIView):
             if no_ingredient:
                 raise ValidationError(
                     {
-                        "detail": "Some of given ingredients is not avaliable in yuor ingredient containers."
+                        "detail": "Some of given ingredients is not avaliable in your ingredient containers."
                     }
                 )
         if not machine.water_container_weight >= (recipe.tea_portion + 60):
             raise ValidationError({"detail": "Not enough water."})
-
-        serializer = PrepareRecipeSerializer(recipe)
-        send_recipe.delay(serializer.data, machine.id)
+        serializer = PrepareRecipeSerializer(recipe,context={'tea_portion': request.data.get('tea_portion', recipe.tea_portion)})   
+        send_recipe.delay(serializer.data , machine.machine_id)
         return Response({}, status=200)
 
 
@@ -411,7 +413,7 @@ class AddToFavouritesView(generics.UpdateAPIView):
             recipes = PrepareRecipeSerializer(recipes, many=True)
             favourites_edit_offline.delay(recipes.data, machine.machine_id)
         else:
-            
+
             recipe = PrepareRecipeSerializer(recipe)
             if data.data["is_favourite"]:
                 # Add to favourites

@@ -71,18 +71,22 @@ class Machine(models.Model):
 
     def __str__(self):
         return self.machine_id
-        
+
+
 class CustomUser(AbstractUser):
     username = None
     email = models.EmailField(_("email"), unique=True)
     machine = models.ForeignKey(
         Machine, null=True, blank=False, on_delete=models.SET_NULL
     )
-    #image = models.ImageField(height_field=150, width_field=150, default=None, null=True, blank=True)
+    # image = models.ImageField(height_field=150, width_field=150, default=None, null=True, blank=True)
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
 
     objects = CustomUserManager()
+
+    class Meta:
+        indexes = [models.Index(fields=["machine"])]
 
     def __str__(self):
         return self.email

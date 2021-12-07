@@ -29,7 +29,7 @@ class Ingredients(models.Model):
 
 
 class Teas(models.Model):
-    tea_name = models.CharField(max_length=255)
+    tea_name = models.CharField(max_length=64)
 
     class Meta:
         db_table = "teas"
@@ -49,7 +49,7 @@ class Recipes(models.Model):
         related_name="original_author",
     )
     last_modification = models.DateTimeField(auto_now_add=True)
-    descripction = models.TextField(max_length=1023, default="Brak")
+    descripction = models.TextField(max_length=512, default="Brak")
     recipe_name = models.CharField(max_length=128)
     overall_upvotes = models.IntegerField(default=0)
     last_month_upvotes = models.IntegerField(default=0)
@@ -131,23 +131,7 @@ class MachineContainers(models.Model):
 
     class Meta:
         db_table = "machine_container"
+        indexes = [models.Index(fields=["machine"])]
 
     def __str__(self):
         return self.machine.machine_id
-
-
-class FavoriteRecipes(models.Model):
-    recipe = models.ForeignKey(Recipes, on_delete=CASCADE)
-    user = models.ForeignKey(CustomUser, on_delete=CASCADE)
-
-    class Meta:
-        db_table = "favorite_recipes"
-
-
-class History(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=CASCADE)
-    recipe = models.ForeignKey(Recipes, on_delete=CASCADE)
-    date = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        db_table = "history"

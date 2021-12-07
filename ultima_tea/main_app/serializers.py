@@ -2,8 +2,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
 from authorization.models import Machine
 from main_app.models import *
-from django.core.exceptions import FieldError
-from django.db.models import Q
+
 
 class IngredientSerializer(serializers.ModelSerializer):
     type = serializers.SerializerMethodField()
@@ -66,7 +65,7 @@ class UpdateIngredientsConatainerSerializer(serializers.ModelSerializer):
         try:
             ingredient_id = validated_data.pop("ingredient_id")
         except KeyError:
-            raise serializers.ValidationError({'ingredient_id': 'Field is required.'})
+            raise serializers.ValidationError({"ingredient_id": "Field is required."})
         try:
             ingredient = Ingredients.objects.get(pk=ingredient_id)
             instance.ingredient = ingredient
@@ -87,7 +86,7 @@ class UpdateTeasConatainerSerializer(serializers.ModelSerializer):
         try:
             tea_id = validated_data.pop("tea_id")
         except KeyError:
-            raise serializers.ValidationError({'tea_id': 'Field is required.'})
+            raise serializers.ValidationError({"tea_id": "Field is required."})
         try:
             tea = Teas.objects.get(pk=tea_id)
             instance.tea = tea
@@ -121,13 +120,9 @@ class WriteIngredientsRecipesSerializer(serializers.ModelSerializer):
         )
 
     def validate(self, attrs):
-        """
-        Validate if ingredient object exist
-        """
+        # Validate if ingredient object exist
         if self.context["request"].method == "PATCH":
-            """
-            For PATCH ingredient argument is optional
-            """
+            # For PATCH ingredient argument is optional
             if "ingredient_id" in attrs:
                 try:
                     Ingredients.objects.get(pk=attrs["ingredient_id"])
@@ -143,9 +138,7 @@ class WriteIngredientsRecipesSerializer(serializers.ModelSerializer):
         return super().validate(attrs)
 
     def validate_id(self, value):
-        """
-        If id is specified validate if object exist
-        """
+        # If id is specified validate if object exist
         if IngredientsRecipes.objects.filter(pk=value).exists():
             return value
         raise serializers.ValidationError("Object does not exist")
@@ -172,28 +165,20 @@ class WriteRecipesSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         if self.partial:
-            """
-            PATCH method
-            """
+            # PATCH method
             try:
                 ingredients_recipes_data = validated_data.pop("ingredients")
                 recipe = super().update(instance, validated_data)
                 if ingredients_recipes_data == []:
-                    """
-                    Empty inredients
-                    """
+                    # Empty inredients
                     return recipe
             except KeyError:
-                """
-                No ingredients
-                """
+                # No ingredients
                 recipe = super().update(instance, validated_data)
                 return recipe
             for ingredients_data in ingredients_recipes_data:
                 if "id" not in ingredients_data:
-                    """
-                    No id of recipe to edit - raise error
-                    """
+                    # No id of recipe to edit - raise error
                     raise serializers.ValidationError({"id": "Field is required."})
                 instance = IngredientsRecipes.objects.filter(pk=ingredients_data["id"])
                 if "ingredient_id" in ingredients_data:
@@ -205,39 +190,31 @@ class WriteRecipesSerializer(serializers.ModelSerializer):
 
                 if "ammount" in ingredients_data:
                     ammount = ingredients_data["ammount"]
-                    if ingredient != None:
+                    if ingredient is not None:
                         instance.update(ingredient=ingredient, ammount=ammount)
                     else:
                         instance.update(ammount=ammount)
                 else:
-                    if ingredient != None:
+                    if ingredient is not None:
                         instance.update(ingredient=ingredient)
                         return recipe
         else:
-            """
-            PUT method
-            """
+            # PUT method
             try:
                 ingredients_recipes_data = validated_data.pop("ingredients")
                 recipe = super().update(instance, validated_data)
                 IngredientsRecipes.objects.filter(recipe=recipe).delete()
                 if ingredients_recipes_data == []:
-                    """
-                    Empty ingredients - delete all existing
-                    """
+                    # Empty ingredients - delete all existing
                     return recipe
             except KeyError:
-                """
-                No ingredients is prohibited
-                """
+                # No ingredients is prohibited
                 raise serializers.ValidationError({"ingredients": "Field is required"})
             for ingredients_data in ingredients_recipes_data:
                 ingredient = Ingredients.objects.get(
                     pk=ingredients_data["ingredient_id"]
                 )
-                """
-                Id not specified - create new one
-                """
+                # Id not specified - create new one
                 IngredientsRecipes.objects.create(
                     recipe=recipe,
                     ammount=ingredients_data["ammount"],
@@ -271,9 +248,9 @@ class RecipesSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-
 class PrepareRecipeIngredientRecipesSerializer(serializers.ModelSerializer):
     ingredient = IngredientSerializer(read_only=True)
+
     class Meta:
         model = IngredientsRecipes
         fields = (
@@ -281,10 +258,11 @@ class PrepareRecipeIngredientRecipesSerializer(serializers.ModelSerializer):
             "ammount",
         )
 
+
 class PrepareRecipeSerializer(serializers.ModelSerializer):
     tea_type = TeaSerializer(read_only=True)
     ingredients = PrepareRecipeIngredientRecipesSerializer(many=True)
-
+    currnet_tea_portion = serializers.SerializerMethodField(required=False)
 
     class Meta:
         model = Recipes
@@ -295,13 +273,22 @@ class PrepareRecipeSerializer(serializers.ModelSerializer):
             "mixing_time",
             "tea_type",
             "ingredients",
-            'tea_herbs_ammount',
-            'tea_portion',
-            'id'
+            "tea_herbs_ammount",
+            "tea_portion",
+            "id",
+            "currnet_tea_portion",
         )
+
+    def get_currnet_tea_portion(self, obj):
+        currnet_tea_portion = self.context.get("tea_portion", obj.tea_portion)
+        if currnet_tea_portion != "":
+            return currnet_tea_portion 
+        return None
+
 
 class FavouritesSerializer(serializers.ModelSerializer):
     is_favourite = serializers.BooleanField(required=True)
+
     class Meta:
         model = Recipes
         fields = ("is_favourite",)
