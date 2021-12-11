@@ -1,5 +1,6 @@
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 from authorization.models import Machine
 from main_app.models import *
 
@@ -164,6 +165,23 @@ class WriteRecipesSerializer(serializers.ModelSerializer):
         return recipe
 
     def update(self, instance, validated_data):
+        if instance.is_public:
+            if not (len(validated_data.keys()) == 1 and "descripction" in validated_data):
+                # Cant update public recipe
+                try:
+                    if validated_data["is_public"]:
+                        raise serializers.ValidationError(
+                            {"is_public": "You cant modify public recipe."}
+                        )
+                    # Change to private - clear upvotes
+                    instance.overall_upvotes = 0
+                    instance.last_month_upvotes = 0
+                    instance.save()
+                except KeyError:
+                    raise serializers.ValidationError(
+                        {"is_public": "You cant modify public recipe."}
+                    )
+
         if self.partial:
             # PATCH method
             try:
@@ -282,7 +300,7 @@ class PrepareRecipeSerializer(serializers.ModelSerializer):
     def get_currnet_tea_portion(self, obj):
         currnet_tea_portion = self.context.get("tea_portion", obj.tea_portion)
         if currnet_tea_portion != "":
-            return currnet_tea_portion 
+            return currnet_tea_portion
         return None
 
 
@@ -292,3 +310,18 @@ class FavouritesSerializer(serializers.ModelSerializer):
     class Meta:
         model = Recipes
         fields = ("is_favourite",)
+
+class RecipeVoteSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = VotedRecipes
+        fields = "__all__"
+        extra_kwargs = {'score': {'required': True}} 
+
+
+    def validate_score(self, value):
+        if value is None:
+            raise ValidationError({"score": "This field is required."})
+        if value > 5 or value < 0:
+            raise ValidationError({"score": "Wrong score values. Range is <0;5>."})
+        return value

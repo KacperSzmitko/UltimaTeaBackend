@@ -51,8 +51,8 @@ class Recipes(models.Model):
     last_modification = models.DateTimeField(auto_now_add=True)
     descripction = models.TextField(max_length=512, default="Brak")
     recipe_name = models.CharField(max_length=128)
-    overall_upvotes = models.IntegerField(default=0)
-    last_month_upvotes = models.IntegerField(default=0)
+    score = models.FloatField(default=0)
+    votes = models.IntegerField(default=0)
     is_public = models.BooleanField(default=False)
     brewing_temperature = models.FloatField(default=80)
     brewing_time = models.FloatField(default=60)
@@ -112,22 +112,21 @@ class UserSettings(models.Model):
 class MachineContainers(models.Model):
 
     CONTAINER_NAME_CHOICES = (
-        (1, "first_container_weight"), #Tea 
-        (2, "second_container_weight"), #Tea
-        (3, "third_container_weight"), #Ingredient
-        (4, "fourth_container_weight"), #Ingredient
+        (1, "first_container_weight"),  # Tea
+        (2, "second_container_weight"),  # Tea
+        (3, "third_container_weight"),  # Ingredient
+        (4, "fourth_container_weight"),  # Ingredient
     )
 
-    machine = models.ForeignKey(Machine, on_delete=models.CASCADE, related_name='machine_containers')
+    machine = models.ForeignKey(
+        Machine, on_delete=models.CASCADE, related_name="machine_containers"
+    )
     ingredient = models.ForeignKey(
         Ingredients, on_delete=models.CASCADE, null=True, default=None
     )
-    tea = models.ForeignKey(
-        Teas, on_delete=models.CASCADE, null=True, default=None
-    )
+    tea = models.ForeignKey(Teas, on_delete=models.CASCADE, null=True, default=None)
     ammount = models.FloatField(default=0, null=True)
     container_number = models.IntegerField(default=0, choices=CONTAINER_NAME_CHOICES)
-
 
     class Meta:
         db_table = "machine_container"
@@ -135,3 +134,14 @@ class MachineContainers(models.Model):
 
     def __str__(self):
         return self.machine.machine_id
+
+
+class VotedRecipes(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    recipe = models.ForeignKey(Recipes, on_delete=models.CASCADE)
+    score = models.IntegerField(default=0)
+
+    class Meta:
+        db_table = "voted_recipes"
+        unique_together = (("user", "recipe"))
+        indexes = [models.Index(fields=["user", "recipe"])]

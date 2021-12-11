@@ -10,10 +10,8 @@ from django.db.models import Q
 from .models import *
 from .tasks import *
 from .serializers import *
-
-# TODO When user likes own recipe like goes to orginal one
-# TODO Tea portion dynamicly
-
+from rest_framework.decorators import action
+# TODO Add table to store info about rated recipes
 
 def filter_recipes(params: dict, queryset: QuerySet):
     """
@@ -100,7 +98,6 @@ class IsAuthorOrAdmin(permissions.BasePermission):
             return True
         return False
 
-
 class MachineInfoViewSet(generics.ListAPIView):
     """
     List all user machines info
@@ -113,6 +110,13 @@ class MachineInfoViewSet(generics.ListAPIView):
     def get_queryset(self):
         return Machine.objects.filter(customuser=self.request.user)
 
+class CheckTokenView(APIView):
+    queryset = CustomUser.objects.all()
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, format=None):
+        self.check_permissions(request)
+        return Response(status=200)
 
 class UpdateTeaContainersView(generics.UpdateAPIView):
     """
@@ -157,7 +161,6 @@ class UpdateTeaContainersView(generics.UpdateAPIView):
             Q(machine__customuser=self.request.user) & (Q(container_number__lte=2))
         )
 
-
 class UpdateIngredientContainersView(generics.UpdateAPIView):
     """
     List or edit ingredient containers
@@ -197,7 +200,6 @@ class UpdateIngredientContainersView(generics.UpdateAPIView):
             )
         return data
 
-
 class GetMachineContainers(generics.ListAPIView):
 
     queryset = MachineContainers.objects.all()
@@ -216,7 +218,6 @@ class GetMachineContainers(generics.ListAPIView):
         return Response(
             {"tea_containers": teas.data, "ingredient_containers": ingredients.data}
         )
-
 
 class ListPublicRecipes(generics.ListAPIView):
     """
@@ -241,7 +242,6 @@ class ListPublicRecipes(generics.ListAPIView):
             )
         except ValueError:
             raise WrongQuerystringValue()
-
 
 class UserRecipesViewSet(viewsets.ModelViewSet):
     """
@@ -286,6 +286,33 @@ class UserRecipesViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 
+    @action(detail=True, methods=['post','put'])
+    def vote(self, request, pk):
+        if request.method == 'PUT':
+            # Modify score
+            try:
+                obj = VotedRecipes.objects.get(Q(user_id=request.user.pk) & Q(recipe_id=pk))
+                prev_score = obj.score
+                serializer = RecipeVoteSerializer(instance=obj, data=request.data | {'user': request.user.pk, 'recipe': pk})
+                if serializer.is_valid(raise_exception=True):
+                    obj = serializer.save()
+                    recipe = Recipes.objects.get(pk=pk)
+                    recipe.score = ((recipe.score * recipe.votes) - prev_score + obj.score) / (recipe.votes)
+                    recipe.save()
+                    return Response(status=200)
+            except VotedRecipes.DoesNotExist:
+                pass
+        serializer = RecipeVoteSerializer(data={'user': request.user.pk, 'recipe': pk} | request.data)
+        if serializer.is_valid(raise_exception=True):
+            # Create new score
+            obj = serializer.save()
+            recipe = Recipes.objects.get(pk=pk)
+            recipe.score = ((recipe.score * recipe.votes) + obj.score) / (recipe.votes + 1)
+            recipe.votes += 1
+            recipe.save()
+        return Response(status=201)
+
+
 
 class IngredientsViewSet(viewsets.ModelViewSet):
     serializer_class = IngredientSerializer
@@ -303,24 +330,20 @@ class IngredientsViewSet(viewsets.ModelViewSet):
         else:
             return [permissions.IsAdminUser()]
 
-
 class DeleteRecipeIngredient(generics.DestroyAPIView):
     queryset = IngredientsRecipes.objects.all()
     permission_classes = [IsOwnerOrAdmin]
     serializer_class = IngredientsRecipesSerializer
-
 
 class ListTeas(generics.ListAPIView):
     queryset = Teas.objects.all()
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = TeaSerializer
 
-
 class ListIngredients(generics.ListAPIView):
     queryset = Ingredients.objects.all()
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = IngredientSerializer
-
 
 class SendRecipeView(APIView):
     queryset = IngredientsRecipes.objects.all()
@@ -389,8 +412,6 @@ class SendRecipeView(APIView):
         serializer = PrepareRecipeSerializer(recipe,context={'tea_portion': request.data.get('tea_portion', recipe.tea_portion)})   
         send_recipe.delay(serializer.data , machine.machine_id)
         return Response({}, status=200)
-
-
 class AddToFavouritesView(generics.UpdateAPIView):
 
     serializer_class = FavouritesSerializer
