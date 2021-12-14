@@ -12,6 +12,7 @@ ingredients_router.register("ingredients", IngredientsViewSet)
 urlpatterns = [
     # path("machine/<slug:pk>", GetMachineInfo.as_view(), name="get_machine"),
     path("public_recipes/", ListPublicRecipes.as_view(), name="list_public_recipes"),
+    path("check_token/", CheckTokenView.as_view(), name='check_token'),
     path("send_recipe/", SendRecipeView.as_view(), name="send_recipe"),
     path("", include(recipes_router.urls), name="user_recipes"),
     path("", include(ingredients_router.urls), name="ingredients"),
