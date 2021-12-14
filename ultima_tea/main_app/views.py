@@ -33,11 +33,11 @@ def filter_recipes(params: dict, queryset: QuerySet):
             queryset = queryset.filter(recipe_name__iregex=f".*(?={params[param]}).*")
             continue
         if param == "tea_type":
-            queryset = queryset.filter(tea_type__tea_name=params[param])
+            queryset = queryset.filter(tea_type__pk=params[param])
             continue
         if "ingredient" in param:
             queryset = queryset.filter(
-                ingredientsrecipes__ingredient__ingredient_name=params[param]
+                ingredients__ingredient__pk=params[param]
             )
             continue
         if param == "brewing_temperature_down":
@@ -196,7 +196,7 @@ class UpdateIngredientContainersView(generics.UpdateAPIView):
         else:
             container = MachineContainers.objects.get(pk=pk)
             update_single_container.delay(
-                data.data, machine.id, container.container_number
+                data.data,  container.container_number, machine.machine_id
             )
         return data
 
@@ -238,6 +238,7 @@ class ListPublicRecipes(generics.ListAPIView):
     def get_queryset(self):
         try:
             return filter_recipes(
+                # TODO Add user != requet.user
                 self.request.query_params, Recipes.objects.filter(is_public=True)
             )
         except ValueError:
