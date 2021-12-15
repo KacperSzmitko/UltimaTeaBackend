@@ -18,6 +18,7 @@ django-rest-passwordreset = "*"
 pillow = "*"
 requests = "*"
 celery = "*"
+drf-yasg = "*"
 
 [requires]
 python_version = "3.9"

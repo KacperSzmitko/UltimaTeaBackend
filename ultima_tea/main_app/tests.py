@@ -178,26 +178,26 @@ class TestCases(TestCase):
         machine_containers = {
             "tea_containers": [
                 {
-                    "id": 4,
+                    "id": 1,
                     "ammount": 0.0,
-                    "tea": {"tea_name": "Czarna herbata", "id": 4},
+                    "tea": {"tea_name": "Czarna herbata", "id": 1},
                     "container_number": 1,
                 },
                 {
-                    "id": 5,
+                    "id": 2,
                     "ammount": 0.0,
-                    "tea": {"tea_name": "Zielona herbata", "id": 5},
+                    "tea": {"tea_name": "Zielona herbata", "id": 2},
                     "container_number": 2,
                 },
             ],
             "ingredient_containers": [
                 {
-                    "id": 6,
+                    "id": 3,
                     "ammount": 0.0,
                     "ingredient": {
                         "ingredient_name": "Cukier",
                         "type": "Solid",
-                        "id": 4,
+                        "id": 1,
                     },
                     "container_number": 3,
                 }
@@ -206,6 +206,7 @@ class TestCases(TestCase):
         response = self.client.get("/machine/containers/")
         self.assertEqual(response.status_code, 200)
         data = response.json()
+        print(data)
         self.assertEqual(data, machine_containers)
 
         # Edit wrong syntax
@@ -227,12 +228,14 @@ class TestCases(TestCase):
         self.assertEqual(response.status_code, 400)
 
         # Edit correct
-        edit = {"ingredient_id": 4}
+        print("Beforeeeeeeeee")
+        edit = {"ingredient_id": 25}
         response = self.client.put(
             f'/machine/containers/ingredient/{data["ingredient_containers"][0]["id"]}/',
             edit,
             content_type="application/json",
         )
+        print("Afterrrrrrr")
         self.assertEqual(response.status_code, 200)
         response = self.client.get("/machine/containers/")
         self.assertEqual(response.status_code, 200)
