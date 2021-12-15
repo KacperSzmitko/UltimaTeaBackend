@@ -228,14 +228,14 @@ class TestCases(TestCase):
         self.assertEqual(response.status_code, 400)
 
         # Edit correct
-        print("Beforeeeeeeeee")
+        print("Beforeeeeeeeee")#dev
         edit = {"ingredient_id": 25}
         response = self.client.put(
             f'/machine/containers/ingredient/{data["ingredient_containers"][0]["id"]}/',
             edit,
             content_type="application/json",
         )
-        print("Afterrrrrrr")
+        print("Afterrrrrrr")#dev
         self.assertEqual(response.status_code, 200)
         response = self.client.get("/machine/containers/")
         self.assertEqual(response.status_code, 200)

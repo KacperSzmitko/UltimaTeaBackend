@@ -315,7 +315,7 @@ class UserRecipesViewSet(viewsets.ModelViewSet):
 
 
 
-class IngredientsViewSet(viewsets.ModelViewSet):
+class IngredientsViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     serializer_class = IngredientSerializer
     queryset = Ingredients.objects.all()
     permission_classes_by_action = {
