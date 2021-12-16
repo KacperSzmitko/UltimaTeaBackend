@@ -60,15 +60,15 @@ class TeasConatainerSerializer(serializers.ModelSerializer):
 
 
 class UpdateIngredientsConatainerSerializer(serializers.ModelSerializer):
-    ingredient_id = serializers.IntegerField(required=True)
+    id = serializers.IntegerField(required=True)
 
     def update(self, instance, validated_data):
         try:
-            ingredient_id = validated_data.pop("ingredient_id")
+            id = validated_data.pop("id")
         except KeyError:
-            raise serializers.ValidationError({"ingredient_id": "Field is required."})
+            raise serializers.ValidationError({"id": "Field is required."})
         try:
-            ingredient = Ingredients.objects.get(pk=ingredient_id)
+            ingredient = Ingredients.objects.get(pk=id)
             instance.ingredient = ingredient
             instance.save()
             return instance
@@ -77,19 +77,19 @@ class UpdateIngredientsConatainerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = MachineContainers
-        fields = ("ingredient_id",)
+        fields = ("id",)
 
 
 class UpdateTeasConatainerSerializer(serializers.ModelSerializer):
-    tea_id = serializers.IntegerField(required=True)
+    id = serializers.IntegerField(required=True)
 
     def update(self, instance, validated_data):
         try:
-            tea_id = validated_data.pop("tea_id")
+            id = validated_data.pop("id")
         except KeyError:
-            raise serializers.ValidationError({"tea_id": "Field is required."})
+            raise serializers.ValidationError({"id": "Field is required."})
         try:
-            tea = Teas.objects.get(pk=tea_id)
+            tea = Teas.objects.get(pk=id)
             instance.tea = tea
             instance.save()
             return instance
@@ -98,7 +98,7 @@ class UpdateTeasConatainerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = MachineContainers
-        fields = ("tea_id",)
+        fields = ("id",)
 
 
 class MachineInfoSerializer(serializers.ModelSerializer):

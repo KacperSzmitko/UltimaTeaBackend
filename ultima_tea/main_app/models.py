@@ -18,7 +18,7 @@ class UnitTypes(models.IntegerChoices):
 
 
 class Ingredients(models.Model):
-    ingredient_name = models.CharField(max_length=64)
+    ingredient_name = models.CharField(max_length=32)
     type = models.IntegerField(choices=State.choices)
 
     class Meta:
@@ -29,7 +29,7 @@ class Ingredients(models.Model):
 
 
 class Teas(models.Model):
-    tea_name = models.CharField(max_length=64)
+    tea_name = models.CharField(max_length=32)
 
     class Meta:
         db_table = "teas"

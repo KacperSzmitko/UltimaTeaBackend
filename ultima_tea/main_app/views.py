@@ -107,6 +107,10 @@ class MachineInfoViewSet(generics.ListAPIView):
     permission_classes = [IsOwnerOrAdmin]
     queryset = Machine.objects.all()
 
+    def list(self, request, *args, **kwargs):
+        self.check_permissions(request)
+        return super().list(request, *args, **kwargs)
+
     def get_queryset(self):
         return Machine.objects.filter(customuser=self.request.user)
 
@@ -149,8 +153,6 @@ class UpdateTeaContainersView(generics.UpdateAPIView):
             container = MachineContainers.objects.get(pk=pk)
             if container.tea is not None:
                 data = TeaSerializer(container.tea)
-            elif container.ingredient is not None:
-                data = IngredientSerializer(container.ingredient)
             update_single_container.delay(
                 data.data, container.container_number, machine.machine_id
             )
@@ -198,7 +200,8 @@ class UpdateIngredientContainersView(generics.UpdateAPIView):
             update_single_container.delay(
                 data.data,  container.container_number, machine.machine_id
             )
-        return data
+            data = IngredientSerializer(container.ingredient)
+        return Response(data.data)
 
 class GetMachineContainers(generics.ListAPIView):
 
