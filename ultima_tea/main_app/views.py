@@ -69,6 +69,8 @@ class WrongQuerystringValue(APIException):
 
 class IsOwnerOrAdmin(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
+        if request.user.is_anonymous:
+            return False
         try:
             obj.customuser_set.get(pk=request.user.id)
             return True
@@ -88,15 +90,27 @@ class IsOwnerOrAdmin(permissions.BasePermission):
                 return False
             return False
 
+    def has_permission(self, request, view):
+        if request.user.is_anonymous:
+            return False
+        return True
+
+
 
 class IsAuthorOrAdmin(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
-
+        if request.user.is_anonymous:
+            return False
         if obj.author == request.user:
             return True
         if request.user.is_superuser:
             return True
         return False
+
+    def has_permission(self, request, view):
+        if request.user.is_anonymous:
+            return False
+        return True
 
 class MachineInfoViewSet(generics.ListAPIView):
     """
@@ -213,6 +227,7 @@ class GetMachineContainers(generics.ListAPIView):
         return MachineContainers.objects.filter(machine__customuser=self.request.user)
 
     def list(self, request, *args, **kwargs):
+        self.check_permissions(request)
         queryset = self.get_queryset()
         ingredients = queryset.filter(container_number__gte=3)
         teas = queryset.filter(container_number__lte=2)
@@ -247,6 +262,10 @@ class ListPublicRecipes(generics.ListAPIView):
         except ValueError:
             raise WrongQuerystringValue()
 
+    def list(self, request, *args, **kwargs):
+        self.check_permissions(request)
+        return super().list(request, *args, **kwargs)
+
 class UserRecipesViewSet(viewsets.ModelViewSet):
     """
     Used to do all staff with logged user recipes. Doesnt have access to other recipes.
@@ -278,6 +297,7 @@ class UserRecipesViewSet(viewsets.ModelViewSet):
             return [permissions.IsAuthenticated()]
 
     def list(self, request, *args, **kwargs):
+        self.check_permissions(request)
         queryset = Recipes.objects.filter(author=request.user)
         serializer = self.serializer_class(queryset, many=True)
         return Response(serializer.data)
@@ -334,6 +354,14 @@ class IngredientsViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
         else:
             return [permissions.IsAdminUser()]
 
+    def list(self, request, *args, **kwargs):
+        self.check_permissions(request)
+        return super().list(request, *args, **kwargs)
+
+    def retrieve(self, request, *args, **kwargs):
+        self.check_permissions(request)
+        return super().retrieve(request, *args, **kwargs)
+
 class DeleteRecipeIngredient(generics.DestroyAPIView):
     queryset = IngredientsRecipes.objects.all()
     permission_classes = [IsOwnerOrAdmin]
@@ -344,10 +372,18 @@ class ListTeas(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = TeaSerializer
 
+    def list(self, request, *args, **kwargs):
+        self.check_permissions(request)
+        return super().list(request, *args, **kwargs)
+
 class ListIngredients(generics.ListAPIView):
     queryset = Ingredients.objects.all()
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = IngredientSerializer
+
+    def list(self, request, *args, **kwargs):
+        self.check_permissions(request)
+        return super().list(request, *args, **kwargs)
 
 class SendRecipeView(APIView):
     queryset = IngredientsRecipes.objects.all()
