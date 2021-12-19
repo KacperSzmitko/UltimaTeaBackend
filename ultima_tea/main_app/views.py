@@ -11,6 +11,9 @@ from .models import *
 from .tasks import *
 from .serializers import *
 from rest_framework.decorators import action
+
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 # TODO Add table to store info about rated recipes
 
 def filter_recipes(params: dict, queryset: QuerySet):
@@ -337,7 +340,6 @@ class UserRecipesViewSet(viewsets.ModelViewSet):
         return Response(status=201)
 
 
-
 class IngredientsViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     serializer_class = IngredientSerializer
     queryset = Ingredients.objects.all()
@@ -362,10 +364,12 @@ class IngredientsViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
         self.check_permissions(request)
         return super().retrieve(request, *args, **kwargs)
 
+
 class DeleteRecipeIngredient(generics.DestroyAPIView):
     queryset = IngredientsRecipes.objects.all()
     permission_classes = [IsOwnerOrAdmin]
     serializer_class = IngredientsRecipesSerializer
+
 
 class ListTeas(generics.ListAPIView):
     queryset = Teas.objects.all()
@@ -385,11 +389,24 @@ class ListIngredients(generics.ListAPIView):
         self.check_permissions(request)
         return super().list(request, *args, **kwargs)
 
+
 class SendRecipeView(APIView):
     queryset = IngredientsRecipes.objects.all()
     permission_classes = (permissions.IsAuthenticated,)
     serializer_class = PrepareRecipeSerializer
 
+    # test_param = openapi.Parameter('id', openapi.IN_BODY, description="Recipe ID", type=openapi.TYPE_INTEGER)
+
+    @swagger_auto_schema(operation_description="Sending recipe to machine", 
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['id'],
+            properties={
+                'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                'tea_portion': openapi.Schema(type=openapi.TYPE_INTEGER)
+            },
+        ),
+    )
     def post(self, request, format=None):
         self.check_permissions(request)
         try:
@@ -452,6 +469,8 @@ class SendRecipeView(APIView):
         serializer = PrepareRecipeSerializer(recipe,context={'tea_portion': request.data.get('tea_portion', recipe.tea_portion)})   
         send_recipe.delay(serializer.data , machine.machine_id)
         return Response({}, status=200)
+
+
 class AddToFavouritesView(generics.UpdateAPIView):
 
     serializer_class = FavouritesSerializer

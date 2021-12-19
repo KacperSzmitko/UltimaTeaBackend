@@ -206,7 +206,6 @@ class TestCases(TestCase):
         response = self.client.get("/machine/containers/")
         self.assertEqual(response.status_code, 200)
         data = response.json()
-        print(data)
         self.assertEqual(data, machine_containers)
 
         # Edit wrong syntax
@@ -391,7 +390,31 @@ class TestCases(TestCase):
         self.assertEqual(response.json(), recipe[0])
 
     def test_get_recipe(self):
-        return True
+        response = self.client.get("/recipes/7/")
+
+        compare_assert = {
+            'id': 7,
+            'ingredients': [{'ammount': 12.5, 'ingredient': {'ingredient_name': 'Cukier', 'type': 'Solid', 'id': 16}, 'id': 12}, {'ammount': 3.33, 'ingredient': {'ingredient_name': 'Syrop malinowy', 'type': 'Liquid', 'id': 17}, 'id': 13}], 
+            'tea_type': {'tea_name': 'Czarna herbata', 'id': 16}, 
+            'last_modification': None, 
+            'descripction': 'Brak',
+            'recipe_name': 'test', 
+            'score': 0.0, 
+            'votes': 0, 
+            'is_public': False, 
+            'brewing_temperature': 80.0, 
+            'brewing_time': 60.0, 
+            'mixing_time': 15.0, 
+            'is_favourite': False, 
+            'tea_herbs_ammount': 15.0, 
+            'tea_portion': 200.0, 
+            'author': 6, 
+            'orginal_author': None
+        }
+        
+        data = response.json()
+        data["last_modification"] = None
+        self.assertEqual(data, compare_assert)
 
     def test_send_recipes(self):
         return True
