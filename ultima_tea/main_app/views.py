@@ -285,6 +285,7 @@ class UserRecipesViewSet(viewsets.ModelViewSet):
         "retrieve": [IsAuthorOrAdmin],
     }
     queryset = Recipes.objects.all()
+
     # serializer_class = RecipesSerializer2
     serializer_class = RecipesSerializer
 
@@ -340,7 +341,7 @@ class UserRecipesViewSet(viewsets.ModelViewSet):
         return Response(status=201)
 
 
-class IngredientsViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+class IngredientsViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet, mixins.ListModelMixin):
     serializer_class = IngredientSerializer
     queryset = Ingredients.objects.all()
     permission_classes_by_action = {
@@ -395,7 +396,6 @@ class SendRecipeView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
     serializer_class = PrepareRecipeSerializer
 
-    # test_param = openapi.Parameter('id', openapi.IN_BODY, description="Recipe ID", type=openapi.TYPE_INTEGER)
 
     @swagger_auto_schema(operation_description="Sending recipe to machine", 
         request_body=openapi.Schema(

@@ -242,7 +242,7 @@ class WriteRecipesSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Recipes
-        exclude = ("author",)
+        exclude = ("author", "orginal_author", "votes", "score", "last_modification")
 
 
 class IngredientsRecipesSerializer(serializers.ModelSerializer):
@@ -264,7 +264,6 @@ class RecipesSerializer(serializers.ModelSerializer):
     class Meta:
         model = Recipes
         fields = "__all__"
-
 
 class PrepareRecipeIngredientRecipesSerializer(serializers.ModelSerializer):
     ingredient = IngredientSerializer(read_only=True)

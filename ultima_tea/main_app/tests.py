@@ -36,6 +36,7 @@ class TestCases(TestCase):
 
         ing1 = Ingredients.objects.create(ingredient_name="Cukier", type=2)
         ing2 = Ingredients.objects.create(ingredient_name="Syrop malinowy", type=1)
+        ing2 = Ingredients.objects.create(ingredient_name="Sok z cytryny", type=1)
         Ingredients.objects.create(ingredient_name="Miód", type=1)
         tea1 = Teas.objects.create(tea_name="Czarna herbata")
         tea2 = Teas.objects.create(tea_name="Zielona herbata")
@@ -226,21 +227,18 @@ class TestCases(TestCase):
         )
         self.assertEqual(response.status_code, 400)
 
-        # Edit correct
-        print("Beforeeeeeeeee")#dev
-        edit = {"ingredient_id": 25}
+        edit = {"id": 2}
         response = self.client.put(
             f'/machine/containers/ingredient/{data["ingredient_containers"][0]["id"]}/',
             edit,
             content_type="application/json",
         )
-        print("Afterrrrrrr")#dev
+        # print()#dev
+        # print(response)#dev
+        # print(response.data)#dev
         self.assertEqual(response.status_code, 200)
         response = self.client.get("/machine/containers/")
         self.assertEqual(response.status_code, 200)
-
-
-
 
     def test_create_delete_recipes(self):
         """
@@ -394,7 +392,7 @@ class TestCases(TestCase):
 
         compare_assert = {
             'id': 7,
-            'ingredients': [{'ammount': 12.5, 'ingredient': {'ingredient_name': 'Cukier', 'type': 'Solid', 'id': 16}, 'id': 12}, {'ammount': 3.33, 'ingredient': {'ingredient_name': 'Syrop malinowy', 'type': 'Liquid', 'id': 17}, 'id': 13}], 
+            'ingredients': [{'ammount': 12.5, 'ingredient': {'ingredient_name': 'Cukier', 'type': 'Solid', 'id': 21}, 'id': 12}, {'ammount': 3.33, 'ingredient': {'ingredient_name': 'Sok z cytryny', 'type': 'Liquid', 'id': 23}, 'id': 13}], 
             'tea_type': {'tea_name': 'Czarna herbata', 'id': 16}, 
             'last_modification': None, 
             'descripction': 'Brak',
@@ -420,6 +418,11 @@ class TestCases(TestCase):
         return True
 
     def test_get_ingredients(self):
+        ingredients_reference = [{'ingredient_name': 'Cukier', 'type': 'Solid', 'id': 9}, {'ingredient_name': 'Syrop malinowy', 'type': 'Liquid', 'id': 10}, {'ingredient_name': 'Sok z cytryny', 'type': 'Liquid', 'id': 11}, {'ingredient_name': 'Miód', 'type': 'Liquid', 'id': 12}]
+        response = self.client.get("/ingredients/")
+        self.assertEqual(response.status_code, 200)#dev
+        self.assertEqual(response.json(), ingredients_reference)#dev
+
         return True
 
     def test_get_teas(self):
