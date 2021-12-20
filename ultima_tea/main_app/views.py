@@ -272,7 +272,13 @@ class ListPublicRecipes(generics.ListAPIView):
 
     def list(self, request, *args, **kwargs):
         self.check_permissions(request)
-        return super().list(request, *args, **kwargs)
+        queryset = self.get_queryset()
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = RecipesSerializer(page, many=True, context={'user': request.user})
+            return self.get_paginated_response(serializer.data)
+        serializer = RecipesSerializer(page, many=True, context={'user': request.user})
+        return Response(serializer.data)
 
 
 class UserRecipesViewSet(viewsets.ModelViewSet):

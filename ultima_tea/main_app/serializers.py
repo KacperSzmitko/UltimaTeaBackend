@@ -3,6 +3,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from authorization.models import Machine
 from main_app.models import *
+from django.db.models import Q
 
 
 class IngredientSerializer(serializers.ModelSerializer):
@@ -166,7 +167,9 @@ class WriteRecipesSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         if instance.is_public:
-            if not (len(validated_data.keys()) == 1 and "descripction" in validated_data):
+            if not (
+                len(validated_data.keys()) == 1 and "descripction" in validated_data
+            ):
                 # Cant update public recipe
                 try:
                     if validated_data["is_public"]:
@@ -260,6 +263,27 @@ class IngredientsRecipesSerializer(serializers.ModelSerializer):
 class RecipesSerializer(serializers.ModelSerializer):
     ingredients = IngredientsRecipesSerializer(many=True)
     tea_type = TeaSerializer()
+    voted = serializers.SerializerMethodField()
+    voted_score = serializers.SerializerMethodField()
+
+    def get_voted(self, obj):
+        try:
+            VotedRecipes.objects.get(Q(recipe=obj.id) & Q(user=self.context["user"]))
+            return True
+        except VotedRecipes.DoesNotExist:
+            return False
+        except KeyError:
+            return False
+
+    def get_voted_score(self, obj):
+        try:
+            return VotedRecipes.objects.get(
+                Q(recipe=obj.id) & Q(user=self.context["user"])
+            ).score
+        except VotedRecipes.DoesNotExist:
+            return 0
+        except KeyError:
+            return 0
 
     class Meta:
         model = Recipes
@@ -311,13 +335,12 @@ class FavouritesSerializer(serializers.ModelSerializer):
         model = Recipes
         fields = ("is_favourite",)
 
-class RecipeVoteSerializer(serializers.ModelSerializer):
 
+class RecipeVoteSerializer(serializers.ModelSerializer):
     class Meta:
         model = VotedRecipes
         fields = "__all__"
-        extra_kwargs = {'score': {'required': True}} 
-
+        extra_kwargs = {"score": {"required": True}}
 
     def validate_score(self, value):
         if value is None:
