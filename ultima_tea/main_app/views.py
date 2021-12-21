@@ -418,9 +418,9 @@ class SendRecipeView(APIView):
         try:
             recipe = Recipes.objects.get(pk=id)
         except ObjectDoesNotExist:
-            validation_errors.append("Recipe does not exist.")
+            raise ValidationError({"detail": "Recipe does not exist."})
         if recipe.author.id != request.user.id:
-            validation_errors.append("Wrong recipe id.")
+            raise ValidationError({"detail": "Wrong recipe id."})
         machine = Machine.objects.get(pk=request.user.machine.machine_id)
         if machine.machine_status == 0:
             validation_errors.append("Machine is not connected.")
@@ -461,8 +461,8 @@ class SendRecipeView(APIView):
         
         if len(validation_errors) > 0:
             raise ValidationError({"detail": validation_errors})
-        serializer = PrepareRecipeSerializer(recipe,context={'tea_portion': request.data.get('tea_portion', recipe.tea_portion)})   
-        send_recipe.delay(serializer.data , machine.machine_id)
+        serializer = PrepareRecipeSerializer(recipe,context={'tea_portion': request.data.get('tea_portion', recipe.tea_portion)})
+        send_recipe.delay(serializer.data, machine.machine_id)
         return Response({}, status=200)
 
 

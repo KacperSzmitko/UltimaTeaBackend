@@ -4,7 +4,9 @@ import unittest
 from django.test import TestCase, client
 import json
 from django.test import Client
+import rest_framework
 
+from django.db.models import Q
 from authorization.models import CustomUser
 from .models import (
     Ingredients,
@@ -433,6 +435,43 @@ class TestCases(TestCase):
 
 
     def test_send_recipes(self):
+        send_data = {
+            "id": 1,
+        }
+        response = self.client.post("/send_recipe/", send_data, content_type="application/json")
+        data = response.json()
+        self.assertEqual(data, {'detail': 'Recipe does not exist.'})
+
+        send_data = {
+            "id": 26,
+        }
+        response = self.client.post("/send_recipe/", send_data, content_type="application/json")
+        data = response.json()
+        self.assertEqual(data, {'detail': ['Machine is not connected.', 'Mug is not ready.', 'Not enough tea herbs in container.', 'Given tea type is not available in your tea containers.', 'Not enough ingredient in container.', 'Ingredient Cukier, of required ammount: 12.5, is not avaible in your machine.', 'Ingredient Sok z cytryny, of required ammount: 3.33, is not avaible in your machine.', 'Not enough water.']})
+
+
+        send_data = {
+            "id": 27,
+        }
+        response = self.client.post("/send_recipe/", send_data, content_type="application/json")
+        data = response.json()
+        self.assertEqual(data, {'detail': ['Machine is not connected.', 'Mug is not ready.', 'Not enough tea herbs in container.', 'Given tea type is not available in your tea containers.', 'Ingredient Syrop malinowy, of required ammount: 27.33, is not avaible in your machine.', 'Not enough water.']})
+
+        recipe_default = Recipes.objects.create(
+            author=CustomUser.objects.get(pk=self.user.user_id),
+            recipe_name="default",
+            tea_type=Teas.objects.filter(tea_name="Zielona herbata")[0],
+        )
+
+        Machine.objects.filter(machine_id=self.user.machine).update(is_mug_ready=True, water_container_weight=3333, machine_status=2137)
+
+        MachineContainers.objects.filter(Q(machine=self.user.machine) & Q(container_number__gte=2)).update(ammount='333')
+        send_data = {
+            "id": 29,
+        }
+        response = self.client.post("/send_recipe/", send_data, content_type="application/json")
+        self.assertEqual(response.status_code, 200)
+
         return True
 
     def test_get_ingredients(self):
@@ -447,7 +486,7 @@ class TestCases(TestCase):
         return True
 
     def test_get_public_recipes(self):
-        data_reference = {'count': 1, 'next': None, 'previous': None, 'results': [{'id': 22, 'ingredients': [{'ammount': 32.33, 'ingredient': {'ingredient_name': 'Sok z cytryny', 'type': 'Liquid', 'id': 27}, 'id': 35}, {'ammount': 13.33, 'ingredient': {'ingredient_name': 'Cukier', 'type': 'Solid', 'id': 25}, 'id': 36}], 'tea_type': {'tea_name': 'Czarna herbata', 'id': 19}, 'last_modification': None, 'descripction': 'Brak', 'recipe_name': 'test2', 'score': 0.0, 'votes': 0, 'is_public': True, 'brewing_temperature': 80.0, 'brewing_time': 60.0, 'mixing_time': 15.0, 'is_favourite': False, 'tea_herbs_ammount': 15.0, 'tea_portion': 200.0, 'author': 7, 'orginal_author': None}]}
+        data_reference = {'count': 1, 'next': None, 'previous': None, 'results': [{'id': 16, 'ingredients': [{'ammount': 32.33, 'ingredient': {'ingredient_name': 'Sok z cytryny', 'type': 'Liquid', 'id': 19}, 'id': 25}, {'ammount': 13.33, 'ingredient': {'ingredient_name': 'Cukier', 'type': 'Solid', 'id': 17}, 'id': 26}], 'tea_type': {'tea_name': 'Czarna herbata', 'id': 13}, 'last_modification': None, 'descripction': 'Brak', 'recipe_name': 'test2', 'score': 0.0, 'votes': 0, 'is_public': True, 'brewing_temperature': 80.0, 'brewing_time': 60.0, 'mixing_time': 15.0, 'is_favourite': False, 'tea_herbs_ammount': 15.0, 'tea_portion': 200.0, 'author': 5, 'orginal_author': None}]}
         response = self.client.get("/public_recipes/")
         self.assertEqual(response.status_code, 200)
         data = response.json()
