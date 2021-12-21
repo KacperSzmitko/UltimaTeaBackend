@@ -354,7 +354,7 @@ class UserRecipesViewSet(viewsets.ModelViewSet):
                         (recipe.score * recipe.votes) - prev_score + obj.score
                     ) / (recipe.votes)
                     recipe.save()
-                    return Response(status=200)
+                    return Response({'score': recipe.score}, status=200)
             except VotedRecipes.DoesNotExist:
                 pass
         serializer = RecipeVoteSerializer(
@@ -369,7 +369,7 @@ class UserRecipesViewSet(viewsets.ModelViewSet):
             )
             recipe.votes += 1
             recipe.save()
-        return Response(status=201)
+        return Response({'score': recipe.score}, status=201)
 
 
 class IngredientsViewSet(viewsets.ModelViewSet):
