@@ -1,3 +1,4 @@
+from django.db.models import query
 from django.db.models.query import QuerySet
 from rest_framework.views import APIView
 from rest_framework import permissions
@@ -60,6 +61,8 @@ def filter_recipes(params: dict, queryset: QuerySet):
         if param == "mixing_time_up":
             queryset = queryset.filter(mixing_time__lte=params[param])
             continue
+        if param == "min_score":
+            queryset = queryset.filter(score__gte=params[param])
     return queryset
 
 
