@@ -35,7 +35,7 @@ class TestCases(TestCase):
     def create_objects(self):
 
         ing1 = Ingredients.objects.create(ingredient_name="Cukier", type=2)
-        ing2 = Ingredients.objects.create(ingredient_name="Syrop malinowy", type=1)
+        ing3 = Ingredients.objects.create(ingredient_name="Syrop malinowy", type=1)
         ing2 = Ingredients.objects.create(ingredient_name="Sok z cytryny", type=1)
         Ingredients.objects.create(ingredient_name="Miód", type=1)
         tea1 = Teas.objects.create(tea_name="Czarna herbata")
@@ -56,8 +56,25 @@ class TestCases(TestCase):
             recipe_name="test",
             tea_type=tea1,
         )
+
+        recipe_pub1 = Recipes.objects.create(
+            author=CustomUser.objects.get(pk=self.user.user_id),
+            recipe_name="test1",
+            tea_type=tea2,
+        )
+
+        recipe_pub2 = Recipes.objects.create(
+            author=CustomUser.objects.get(pk=self.user.user_id),
+            recipe_name="test2",
+            tea_type=tea1,
+            is_public = True,
+        )
+
         IngredientsRecipes.objects.create(recipe=recipe, ingredient=ing1, ammount=12.5)
         IngredientsRecipes.objects.create(recipe=recipe, ingredient=ing2, ammount=3.33)
+        IngredientsRecipes.objects.create(recipe=recipe_pub1, ingredient=ing3, ammount=27.33)
+        IngredientsRecipes.objects.create(recipe=recipe_pub2, ingredient=ing2, ammount=32.33)
+        IngredientsRecipes.objects.create(recipe=recipe_pub2, ingredient=ing1, ammount=13.33)
 
     def setUp(self):
         self.client = Client()
@@ -388,11 +405,11 @@ class TestCases(TestCase):
         self.assertEqual(response.json(), recipe[0])
 
     def test_get_recipe(self):
-        response = self.client.get("/recipes/7/")
+        response = self.client.get("/recipes/17/")
 
         compare_assert = {
-            'id': 7,
-            'ingredients': [{'ammount': 12.5, 'ingredient': {'ingredient_name': 'Cukier', 'type': 'Solid', 'id': 21}, 'id': 12}, {'ammount': 3.33, 'ingredient': {'ingredient_name': 'Sok z cytryny', 'type': 'Liquid', 'id': 23}, 'id': 13}], 
+            'id': 17,
+            'ingredients': [{'ammount': 12.5, 'ingredient': {'ingredient_name': 'Cukier', 'type': 'Solid', 'id': 21}, 'id': 27}, {'ammount': 3.33, 'ingredient': {'ingredient_name': 'Sok z cytryny', 'type': 'Liquid', 'id': 23}, 'id': 28}], 
             'tea_type': {'tea_name': 'Czarna herbata', 'id': 16}, 
             'last_modification': None, 
             'descripction': 'Brak',
@@ -414,19 +431,26 @@ class TestCases(TestCase):
         data["last_modification"] = None
         self.assertEqual(data, compare_assert)
 
+
     def test_send_recipes(self):
         return True
 
     def test_get_ingredients(self):
         ingredients_reference = [{'ingredient_name': 'Cukier', 'type': 'Solid', 'id': 9}, {'ingredient_name': 'Syrop malinowy', 'type': 'Liquid', 'id': 10}, {'ingredient_name': 'Sok z cytryny', 'type': 'Liquid', 'id': 11}, {'ingredient_name': 'Miód', 'type': 'Liquid', 'id': 12}]
         response = self.client.get("/ingredients/")
-        self.assertEqual(response.status_code, 200)#dev
-        self.assertEqual(response.json(), ingredients_reference)#dev
-
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), ingredients_reference)
         return True
 
     def test_get_teas(self):
+        
         return True
 
     def test_get_public_recipes(self):
+        data_reference = {'count': 1, 'next': None, 'previous': None, 'results': [{'id': 22, 'ingredients': [{'ammount': 32.33, 'ingredient': {'ingredient_name': 'Sok z cytryny', 'type': 'Liquid', 'id': 27}, 'id': 35}, {'ammount': 13.33, 'ingredient': {'ingredient_name': 'Cukier', 'type': 'Solid', 'id': 25}, 'id': 36}], 'tea_type': {'tea_name': 'Czarna herbata', 'id': 19}, 'last_modification': None, 'descripction': 'Brak', 'recipe_name': 'test2', 'score': 0.0, 'votes': 0, 'is_public': True, 'brewing_temperature': 80.0, 'brewing_time': 60.0, 'mixing_time': 15.0, 'is_favourite': False, 'tea_herbs_ammount': 15.0, 'tea_portion': 200.0, 'author': 7, 'orginal_author': None}]}
+        response = self.client.get("/public_recipes/")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        data["results"][0]["last_modification"] = None
+        self.assertEqual(data, data_reference)
         return True
