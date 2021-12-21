@@ -478,11 +478,15 @@ class TestCases(TestCase):
         ingredients_reference = [{'ingredient_name': 'Cukier', 'type': 'Solid', 'id': 9}, {'ingredient_name': 'Syrop malinowy', 'type': 'Liquid', 'id': 10}, {'ingredient_name': 'Sok z cytryny', 'type': 'Liquid', 'id': 11}, {'ingredient_name': 'Miód', 'type': 'Liquid', 'id': 12}]
         response = self.client.get("/ingredients/")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), ingredients_reference)
+        data = response.json()
+        self.assertEqual(data, ingredients_reference)
         return True
 
     def test_get_teas(self):
-        
+        data_reference = [{'tea_name': 'Czarna herbata', 'id': 19}, {'tea_name': 'Zielona herbata', 'id': 20}, {'tea_name': 'Biała herbata', 'id': 21}]
+        response = self.client.get("/teas/")
+        data = response.json()
+        self.assertEqual(data, data_reference)
         return True
 
     def test_get_public_recipes(self):
