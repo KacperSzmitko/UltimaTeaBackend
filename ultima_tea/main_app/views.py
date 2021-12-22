@@ -1,3 +1,4 @@
+from django.db.models import query
 from django.db.models.query import QuerySet
 from rest_framework.views import APIView
 from rest_framework import permissions
@@ -15,6 +16,9 @@ from rest_framework.decorators import action
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 # TODO Add table to store info about rated recipes
+
+MAX_RECIPES_PER_USER = 50
+
 
 def filter_recipes(params: dict, queryset: QuerySet):
     """
@@ -39,9 +43,7 @@ def filter_recipes(params: dict, queryset: QuerySet):
             queryset = queryset.filter(tea_type__pk=params[param])
             continue
         if "ingredient" in param:
-            queryset = queryset.filter(
-                ingredients__ingredient__pk=params[param]
-            )
+            queryset = queryset.filter(ingredients__ingredient__pk=params[param])
             continue
         if param == "brewing_temperature_down":
             queryset = queryset.filter(brewing_temperature__gte=params[param])
@@ -61,6 +63,8 @@ def filter_recipes(params: dict, queryset: QuerySet):
         if param == "mixing_time_up":
             queryset = queryset.filter(mixing_time__lte=params[param])
             continue
+        if param == "min_score":
+            queryset = queryset.filter(score__gte=params[param])
     return queryset
 
 
@@ -99,7 +103,6 @@ class IsOwnerOrAdmin(permissions.BasePermission):
         return True
 
 
-
 class IsAuthorOrAdmin(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         if request.user.is_anonymous:
@@ -114,6 +117,7 @@ class IsAuthorOrAdmin(permissions.BasePermission):
         if request.user.is_anonymous:
             return False
         return True
+
 
 class MachineInfoViewSet(generics.ListAPIView):
     """
@@ -131,6 +135,7 @@ class MachineInfoViewSet(generics.ListAPIView):
     def get_queryset(self):
         return Machine.objects.filter(customuser=self.request.user)
 
+
 class CheckTokenView(APIView):
     queryset = CustomUser.objects.all()
     permission_classes = (permissions.IsAuthenticated,)
@@ -138,6 +143,7 @@ class CheckTokenView(APIView):
     def get(self, request, format=None):
         self.check_permissions(request)
         return Response(status=200)
+
 
 class UpdateTeaContainersView(generics.UpdateAPIView):
     """
@@ -180,6 +186,7 @@ class UpdateTeaContainersView(generics.UpdateAPIView):
             Q(machine__customuser=self.request.user) & (Q(container_number__lte=2))
         )
 
+
 class UpdateIngredientContainersView(generics.UpdateAPIView):
     """
     List or edit ingredient containers
@@ -215,10 +222,11 @@ class UpdateIngredientContainersView(generics.UpdateAPIView):
         else:
             container = MachineContainers.objects.get(pk=pk)
             update_single_container.delay(
-                data.data,  container.container_number, machine.machine_id
+                data.data, container.container_number, machine.machine_id
             )
             data = IngredientSerializer(container.ingredient)
         return Response(data.data)
+
 
 class GetMachineContainers(generics.ListAPIView):
 
@@ -240,6 +248,7 @@ class GetMachineContainers(generics.ListAPIView):
             {"tea_containers": teas.data, "ingredient_containers": ingredients.data}
         )
 
+
 class ListPublicRecipes(generics.ListAPIView):
     """
     List public recipes with filters
@@ -260,14 +269,22 @@ class ListPublicRecipes(generics.ListAPIView):
         try:
             return filter_recipes(
                 # TODO Add user != requet.user
-                self.request.query_params, Recipes.objects.filter(is_public=True)
+                self.request.query_params,
+                Recipes.objects.filter(is_public=True),
             )
         except ValueError:
             raise WrongQuerystringValue()
 
     def list(self, request, *args, **kwargs):
         self.check_permissions(request)
-        return super().list(request, *args, **kwargs)
+        queryset = self.get_queryset()
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = RecipesSerializer(page, many=True, context={'user': request.user})
+            return self.get_paginated_response(serializer.data)
+        serializer = RecipesSerializer(page, many=True, context={'user': request.user})
+        return Response(serializer.data)
+
 
 class UserRecipesViewSet(viewsets.ModelViewSet):
     """
@@ -300,6 +317,15 @@ class UserRecipesViewSet(viewsets.ModelViewSet):
             # action is not set return default permission_classes
             return [permissions.IsAuthenticated()]
 
+    def create(self, request, *args, **kwargs):
+        if Recipes.objects.filter(author=request.user).count() > MAX_RECIPES_PER_USER:
+            raise ValidationError(
+                {
+                    "detail": f"You have reached maxium numer of recipes ({MAX_RECIPES_PER_USER}). In order to create new recipe delete old ones."
+                }
+            )
+        return super().create(request, *args, **kwargs)
+
     def list(self, request, *args, **kwargs):
         self.check_permissions(request)
         queryset = Recipes.objects.filter(author=request.user)
@@ -314,32 +340,42 @@ class UserRecipesViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 
-    @action(detail=True, methods=['post','put'])
+    @action(detail=True, methods=["post", "put"])
     def vote(self, request, pk):
-        if request.method == 'PUT':
+        if request.method == "PUT":
             # Modify score
             try:
-                obj = VotedRecipes.objects.get(Q(user_id=request.user.pk) & Q(recipe_id=pk))
+                obj = VotedRecipes.objects.get(
+                    Q(user_id=request.user.pk) & Q(recipe_id=pk)
+                )
                 prev_score = obj.score
-                serializer = RecipeVoteSerializer(instance=obj, data=request.data | {'user': request.user.pk, 'recipe': pk})
+                serializer = RecipeVoteSerializer(
+                    instance=obj,
+                    data=request.data | {"user": request.user.pk, "recipe": pk},
+                )
                 if serializer.is_valid(raise_exception=True):
                     obj = serializer.save()
                     recipe = Recipes.objects.get(pk=pk)
-                    recipe.score = ((recipe.score * recipe.votes) - prev_score + obj.score) / (recipe.votes)
+                    recipe.score = (
+                        (recipe.score * recipe.votes) - prev_score + obj.score
+                    ) / (recipe.votes)
                     recipe.save()
-                    return Response(status=200)
+                    return Response({'score': recipe.score}, status=200)
             except VotedRecipes.DoesNotExist:
                 pass
-        serializer = RecipeVoteSerializer(data={'user': request.user.pk, 'recipe': pk} | request.data)
+        serializer = RecipeVoteSerializer(
+            data={"user": request.user.pk, "recipe": pk} | request.data
+        )
         if serializer.is_valid(raise_exception=True):
             # Create new score
             obj = serializer.save()
             recipe = Recipes.objects.get(pk=pk)
-            recipe.score = ((recipe.score * recipe.votes) + obj.score) / (recipe.votes + 1)
+            recipe.score = ((recipe.score * recipe.votes) + obj.score) / (
+                recipe.votes + 1
+            )
             recipe.votes += 1
             recipe.save()
-        return Response(status=201)
-
+        return Response({'score': recipe.score}, status=201)
 
 class IngredientsViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet, mixins.ListModelMixin):
     serializer_class = IngredientSerializer
@@ -380,6 +416,7 @@ class ListTeas(generics.ListAPIView):
     def list(self, request, *args, **kwargs):
         self.check_permissions(request)
         return super().list(request, *args, **kwargs)
+
 
 class ListIngredients(generics.ListAPIView):
     queryset = Ingredients.objects.all()
@@ -461,7 +498,13 @@ class SendRecipeView(APIView):
         
         if len(validation_errors) > 0:
             raise ValidationError({"detail": validation_errors})
-        serializer = PrepareRecipeSerializer(recipe,context={'tea_portion': request.data.get('tea_portion', recipe.tea_portion)})
+
+        serializer = PrepareRecipeSerializer(
+            recipe,
+            context={
+                "tea_portion": request.data.get("tea_portion", recipe.tea_portion)
+            },
+        )
         send_recipe.delay(serializer.data, machine.machine_id)
         return Response({}, status=200)
 

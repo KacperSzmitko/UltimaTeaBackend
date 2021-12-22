@@ -252,9 +252,6 @@ class TestCases(TestCase):
             edit,
             content_type="application/json",
         )
-        # print()#dev
-        # print(response)#dev
-        # print(response.data)#dev
         self.assertEqual(response.status_code, 200)
         response = self.client.get("/machine/containers/")
         self.assertEqual(response.status_code, 200)
@@ -272,7 +269,7 @@ class TestCases(TestCase):
         self.assertEqual(response.status_code, 400)
 
         recipe = {"ingredients": "", "recipe_name": "test1", "tea_type": ""}
-        response = self.client.post(
+        response = self.client.post(    
             "/recipes/", recipe, content_type="application/json"
         )
         self.assertEqual(response.status_code, 400)
@@ -409,25 +406,7 @@ class TestCases(TestCase):
     def test_get_recipe(self):
         response = self.client.get("/recipes/17/")
 
-        compare_assert = {
-            'id': 17,
-            'ingredients': [{'ammount': 12.5, 'ingredient': {'ingredient_name': 'Cukier', 'type': 'Solid', 'id': 21}, 'id': 27}, {'ammount': 3.33, 'ingredient': {'ingredient_name': 'Sok z cytryny', 'type': 'Liquid', 'id': 23}, 'id': 28}], 
-            'tea_type': {'tea_name': 'Czarna herbata', 'id': 16}, 
-            'last_modification': None, 
-            'descripction': 'Brak',
-            'recipe_name': 'test', 
-            'score': 0.0, 
-            'votes': 0, 
-            'is_public': False, 
-            'brewing_temperature': 80.0, 
-            'brewing_time': 60.0, 
-            'mixing_time': 15.0, 
-            'is_favourite': False, 
-            'tea_herbs_ammount': 15.0, 
-            'tea_portion': 200.0, 
-            'author': 6, 
-            'orginal_author': None
-        }
+        compare_assert = {'id': 17, 'ingredients': [{'ammount': 12.5, 'ingredient': {'ingredient_name': 'Cukier', 'type': 'Solid', 'id': 21}, 'id': 27}, {'ammount': 3.33, 'ingredient': {'ingredient_name': 'Sok z cytryny', 'type': 'Liquid', 'id': 23}, 'id': 28}], 'tea_type': {'tea_name': 'Czarna herbata', 'id': 16}, 'voted': False, 'voted_score': 0, 'last_modification': None, 'descripction': 'Brak', 'recipe_name': 'test', 'score': 0.0, 'votes': 0, 'is_public': False, 'brewing_temperature': 80.0, 'brewing_time': 60.0, 'mixing_time': 15.0, 'is_favourite': False, 'tea_herbs_ammount': 15.0, 'tea_portion': 200.0, 'author': 6}
         
         data = response.json()
         data["last_modification"] = None
@@ -490,7 +469,7 @@ class TestCases(TestCase):
         return True
 
     def test_get_public_recipes(self):
-        data_reference = {'count': 1, 'next': None, 'previous': None, 'results': [{'id': 16, 'ingredients': [{'ammount': 32.33, 'ingredient': {'ingredient_name': 'Sok z cytryny', 'type': 'Liquid', 'id': 19}, 'id': 25}, {'ammount': 13.33, 'ingredient': {'ingredient_name': 'Cukier', 'type': 'Solid', 'id': 17}, 'id': 26}], 'tea_type': {'tea_name': 'Czarna herbata', 'id': 13}, 'last_modification': None, 'descripction': 'Brak', 'recipe_name': 'test2', 'score': 0.0, 'votes': 0, 'is_public': True, 'brewing_temperature': 80.0, 'brewing_time': 60.0, 'mixing_time': 15.0, 'is_favourite': False, 'tea_herbs_ammount': 15.0, 'tea_portion': 200.0, 'author': 5, 'orginal_author': None}]}
+        data_reference = {'count': 1, 'next': None, 'previous': None, 'results': [{'id': 16, 'ingredients': [{'ammount': 32.33, 'ingredient': {'ingredient_name': 'Sok z cytryny', 'type': 'Liquid', 'id': 19}, 'id': 25}, {'ammount': 13.33, 'ingredient': {'ingredient_name': 'Cukier', 'type': 'Solid', 'id': 17}, 'id': 26}], 'tea_type': {'tea_name': 'Czarna herbata', 'id': 13}, 'voted': False, 'voted_score': 0, 'last_modification': None, 'descripction': 'Brak', 'recipe_name': 'test2', 'score': 0.0, 'votes': 0, 'is_public': True, 'brewing_temperature': 80.0, 'brewing_time': 60.0, 'mixing_time': 15.0, 'is_favourite': False, 'tea_herbs_ammount': 15.0, 'tea_portion': 200.0, 'author': 5}]}
         response = self.client.get("/public_recipes/")
         self.assertEqual(response.status_code, 200)
         data = response.json()
@@ -520,10 +499,7 @@ class TestCases(TestCase):
         self.assertEqual(response.status_code, 400)
 
         response = self.client.get(f"/recipes/{example_recipe_id}/")
-        recipe_reference = {'id': 33, 'ingredients': [{'ammount': 12.5, 'ingredient': {'ingredient_name': 'Cukier', 'type': 'Solid', 'id': 41}, 'id': 52}, {'ammount': 3.33, 'ingredient': 
-            {'ingredient_name': 'Sok z cytryny', 'type': 'Liquid', 'id': 43}, 'id': 53}], 'tea_type': {'tea_name': 'Czarna herbata', 'id': 31}, 'last_modification': None, 
-            'descripction': 'Brak', 'recipe_name': 'test', 'score': 4.0, 'votes': 1, 'is_public': False, 'brewing_temperature': 80.0, 'brewing_time': 60.0, 'mixing_time': 15.0, 'is_favourite': False, 
-            'tea_herbs_ammount': 15.0, 'tea_portion': 200.0, 'author': 12, 'orginal_author': None}
+        recipe_reference = {'id': 33, 'ingredients': [{'ammount': 12.5, 'ingredient': {'ingredient_name': 'Cukier', 'type': 'Solid', 'id': 41}, 'id': 52}, {'ammount': 3.33, 'ingredient': {'ingredient_name': 'Sok z cytryny', 'type': 'Liquid', 'id': 43}, 'id': 53}], 'tea_type': {'tea_name': 'Czarna herbata', 'id': 31}, 'voted': False, 'voted_score': 0, 'last_modification': None, 'descripction': 'Brak', 'recipe_name': 'test', 'score': 4.0, 'votes': 1, 'is_public': False, 'brewing_temperature': 80.0, 'brewing_time': 60.0, 'mixing_time': 15.0, 'is_favourite': False, 'tea_herbs_ammount': 15.0, 'tea_portion': 200.0, 'author': 12}
         data = response.json()
         data['last_modification'] = None
         self.assertEqual(data, recipe_reference)
