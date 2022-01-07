@@ -12,11 +12,7 @@ class IngredientSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Ingredients
-        fields = (
-            "ingredient_name",
-            "type",
-            "id",
-        )
+        fields = "__all__"
 
     def get_type(self, obj):
         "Convert enum to readable value"
@@ -28,10 +24,7 @@ class TeaSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Teas
-        fields = (
-            "tea_name",
-            "id",
-        )
+        fields = "__all__"
 
 
 class IngredientsConatainerSerializer(serializers.ModelSerializer):

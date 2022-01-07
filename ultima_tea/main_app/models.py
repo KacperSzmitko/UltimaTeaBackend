@@ -12,6 +12,10 @@ class State(models.IntegerChoices):
 class Ingredients(models.Model):
     ingredient_name = models.CharField(max_length=32)
     type = models.IntegerField(choices=State.choices)
+    opening_percentage = models.IntegerField(default=0)
+    pass_time = models.IntegerField(default=0)
+    weight_offset = models.IntegerField(default=0)
+    density = models.FloatField(default=0)
 
     class Meta:
         db_table = "ingredients"
@@ -22,7 +26,7 @@ class Ingredients(models.Model):
 
 class Teas(models.Model):
     tea_name = models.CharField(max_length=32)
-
+    density = models.FloatField(default=0) #In g/cm^3
     class Meta:
         db_table = "teas"
 
