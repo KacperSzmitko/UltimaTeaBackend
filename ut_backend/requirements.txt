@@ -1,0 +1,10 @@
+django==3.0.8
+gunicorn==20.0.4
+djangorestframework
+djangorestframework-simplejwt
+django-cors-headers
+django-rest-passwordreset
+requests
+celery
+drf-yasg
+psycopg2-binary
