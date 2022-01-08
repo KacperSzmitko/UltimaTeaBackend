@@ -13,6 +13,8 @@ from .tasks import *
 from .serializers import *
 from rest_framework.decorators import action
 
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 # TODO Add table to store info about rated recipes
 
 MAX_RECIPES_PER_USER = 50
@@ -305,6 +307,7 @@ class UserRecipesViewSet(viewsets.ModelViewSet):
         "retrieve": [IsAuthorOrAdmin],
     }
     queryset = Recipes.objects.all()
+
     # serializer_class = RecipesSerializer2
     serializer_class = RecipesSerializer
 
@@ -379,8 +382,7 @@ class UserRecipesViewSet(viewsets.ModelViewSet):
             recipe.save()
         return Response({'score': recipe.score}, status=201)
 
-
-class IngredientsViewSet(viewsets.ModelViewSet):
+class IngredientsViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet, mixins.ListModelMixin):
     serializer_class = IngredientSerializer
     queryset = Ingredients.objects.all()
     permission_classes_by_action = {
@@ -436,12 +438,25 @@ class SendRecipeView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
     serializer_class = PrepareRecipeSerializer
 
+
+    @swagger_auto_schema(operation_description="Sending recipe to machine", 
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['id'],
+            properties={
+                'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                'tea_portion': openapi.Schema(type=openapi.TYPE_INTEGER)
+            },
+        ),
+    )
     def post(self, request, format=None):
         self.check_permissions(request)
         try:
             id = request.data["id"]
         except KeyError:
             raise ValidationError({"id": "Field is required."})
+
+        validation_errors = [] 
         try:
             recipe = Recipes.objects.get(pk=id)
         except ObjectDoesNotExist:
@@ -450,9 +465,9 @@ class SendRecipeView(APIView):
             raise ValidationError({"detail": "Wrong recipe id."})
         machine = Machine.objects.get(pk=request.user.machine.machine_id)
         if machine.machine_status == 0:
-            raise ValidationError({"detail": "Machine is not connected."})
+            validation_errors.append("Machine is not connected.")
         if not machine.is_mug_ready:
-            raise ValidationError({"detail": "Mug is not ready."})
+            validation_errors.append("Mug is not ready.")
         tea_containers = MachineContainers.objects.filter(
             Q(machine=machine) & Q(container_number__lte=2)
         )
@@ -462,39 +477,33 @@ class SendRecipeView(APIView):
                 if tea_container.ammount >= recipe.tea_herbs_ammount:
                     no_tea = False
                 else:
-                    raise ValidationError(
-                        {"detail": "Not enough tea herbs in container."}
-                    )
+                    validation_errors.append("Not enough tea herbs in container.")
                 break
         if no_tea:
-            raise ValidationError(
-                {"detail": "Given tea type is not available in your tea containers."}
-            )
+            validation_errors.append("Given tea type is not available in your tea containers.")
 
         ingredient_containers = MachineContainers.objects.filter(
             Q(machine=request.user.machine) & Q(container_number__gte=3)
         )
 
         ingredients = IngredientsRecipes.objects.filter(recipe=recipe)
-        no_ingredient = True
         for ingredient in ingredients:
             for ingredient_container in ingredient_containers:
+                no_ingredient = True
                 if ingredient_container.ingredient == ingredient.ingredient:
                     if ingredient_container.ammount >= ingredient.ammount:
                         no_ingredient = False
                     else:
-                        raise ValidationError(
-                            {"detail": "Not enough ingredient in container."}
-                        )
+                        validation_errors.append("Not enough ingredient in container.")
                     break
             if no_ingredient:
-                raise ValidationError(
-                    {
-                        "detail": "Some of given ingredients is not avaliable in your ingredient containers."
-                    }
-                )
+                validation_errors.append("Ingredient {}, of required ammount: {}, is not avaible in your machine.".format(ingredient.ingredient, ingredient.ammount))
         if not machine.water_container_weight >= (recipe.tea_portion + 60):
-            raise ValidationError({"detail": "Not enough water."})
+            validation_errors.append("Not enough water.")
+        
+        if len(validation_errors) > 0:
+            raise ValidationError({"detail": validation_errors})
+
         serializer = PrepareRecipeSerializer(
             recipe,
             context={

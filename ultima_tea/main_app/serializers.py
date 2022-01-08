@@ -28,7 +28,7 @@ class TeaSerializer(serializers.ModelSerializer):
 
 
 class IngredientsConatainerSerializer(serializers.ModelSerializer):
-    ingredient = IngredientSerializer()
+    ingredient = IngredientSerializer(required=True, allow_null=True)
 
     class Meta:
         model = MachineContainers
@@ -41,7 +41,7 @@ class IngredientsConatainerSerializer(serializers.ModelSerializer):
 
 
 class TeasConatainerSerializer(serializers.ModelSerializer):
-    tea = TeaSerializer(required=True)
+    tea = TeaSerializer(required=True, allow_null=True)
 
     class Meta:
         model = MachineContainers
@@ -54,7 +54,7 @@ class TeasConatainerSerializer(serializers.ModelSerializer):
 
 
 class UpdateIngredientsConatainerSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField(required=True)
+    id = serializers.IntegerField(required=True, allow_null=True)
 
     def update(self, instance, validated_data):
         try:
@@ -62,8 +62,11 @@ class UpdateIngredientsConatainerSerializer(serializers.ModelSerializer):
         except KeyError:
             raise serializers.ValidationError({"id": "Field is required."})
         try:
-            ingredient = Ingredients.objects.get(pk=id)
-            instance.ingredient = ingredient
+            if id is None:
+                instance.ingredient = id
+            else:
+                ingredient = Ingredients.objects.get(pk=id)
+                instance.ingredient = ingredient
             instance.save()
             return instance
         except ObjectDoesNotExist:
@@ -75,7 +78,7 @@ class UpdateIngredientsConatainerSerializer(serializers.ModelSerializer):
 
 
 class UpdateTeasConatainerSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField(required=True)
+    id = serializers.IntegerField(required=True, allow_null=True)
 
     def update(self, instance, validated_data):
         try:
@@ -83,8 +86,12 @@ class UpdateTeasConatainerSerializer(serializers.ModelSerializer):
         except KeyError:
             raise serializers.ValidationError({"id": "Field is required."})
         try:
-            tea = Teas.objects.get(pk=id)
-            instance.tea = tea
+            if id is None:
+                instance.tea = id
+            else:
+                tea = Teas.objects.get(pk=id)
+                instance.tea = tea
+
             instance.save()
             return instance
         except ObjectDoesNotExist:
@@ -238,7 +245,7 @@ class WriteRecipesSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Recipes
-        exclude = ("author",)
+        exclude = ("author", "votes", "score", "last_modification")
 
 
 class IngredientsRecipesSerializer(serializers.ModelSerializer):
@@ -281,7 +288,6 @@ class RecipesSerializer(serializers.ModelSerializer):
     class Meta:
         model = Recipes
         fields = "__all__"
-
 
 class PrepareRecipeIngredientRecipesSerializer(serializers.ModelSerializer):
     ingredient = IngredientSerializer(read_only=True)
