@@ -1,0 +1,29 @@
+version: '3'
+services:
+  ut_backend:
+    build: ./ut_server
+    image: ut_backend_img
+    networks:
+      - backend_network
+    volumes:
+      - ./gateway/static_files:/static
+    
+
+  gateway:
+    image: nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./gateway/static_files:/static
+    depends_on:
+      - ut_backend
+    networks:
+      - backend_network
+    ports:
+      - 8080:8080
+
+networks:
+  backend_network:
+
+  
+
+
