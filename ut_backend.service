@@ -1,0 +1,14 @@
+[Unit]
+Description=UltimaTea backend
+
+[Service]
+Type=simple
+PIDFile=/gunicorn.pid
+User=maciej
+Group=maciej
+EnvirementFile=/gunicorn.env
+WorkingDirectory=/
+ExecStart=gunicorn ultima_tea.wsgi:application
+ExceReload=/bin/kill -s HUP $MAINPID
+ExecStop=/bin/kill -s TERM $MAINPID
+

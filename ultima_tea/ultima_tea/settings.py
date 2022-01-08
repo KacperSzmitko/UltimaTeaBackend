@@ -33,7 +33,7 @@ SECRET_KEY = "django-insecure-9bxea87=$zj9-$aj_b)bn7po5bdeys4$zycyz83_zvh8r-4ah3
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['192.168.137.10']
 
 
 # Application definition
@@ -181,3 +181,7 @@ SWAGGER_SETTINGS = {
       }
    }
 }
+
+
+STATIC_ROOT = os.path.dirname("/static/")
+MEDIA_ROOT = os.path.dirname("/static/")

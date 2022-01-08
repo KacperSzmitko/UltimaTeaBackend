@@ -1,0 +1,10 @@
+server {
+    listen 80;
+    server_name 192.168.137.10;
+
+    location / {
+        root /ultima_tea/
+    }
+
+    
+}
