@@ -8,6 +8,18 @@ from django.db.models import Q
 
 class IngredientSerializer(serializers.ModelSerializer):
     type = serializers.SerializerMethodField()
+    id = serializers.IntegerField(required=False)
+
+    class Meta:
+        model = Ingredients
+        fields = "__all__"
+
+    def get_type(self, obj):
+        "Convert enum to readable value"
+        return obj.get_type_display()
+
+class IngredientSerializerRequiredId(serializers.ModelSerializer):
+    type = serializers.SerializerMethodField()
     id = serializers.IntegerField(required=True)
 
     class Meta:
@@ -20,15 +32,16 @@ class IngredientSerializer(serializers.ModelSerializer):
 
 
 class TeaSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField(required=True)
+    id = serializers.IntegerField(required=False)
 
     class Meta:
         model = Teas
         fields = "__all__"
 
 
+
 class IngredientsConatainerSerializer(serializers.ModelSerializer):
-    ingredient = IngredientSerializer(required=True, allow_null=True)
+    ingredient = IngredientSerializerRequiredId(required=True, allow_null=True)
 
     class Meta:
         model = MachineContainers
@@ -249,7 +262,7 @@ class WriteRecipesSerializer(serializers.ModelSerializer):
 
 
 class IngredientsRecipesSerializer(serializers.ModelSerializer):
-    ingredient = IngredientSerializer(read_only=True)
+    ingredient = IngredientSerializerRequiredId(read_only=True)
 
     class Meta:
         model = IngredientsRecipes
@@ -289,8 +302,9 @@ class RecipesSerializer(serializers.ModelSerializer):
         model = Recipes
         fields = "__all__"
 
+
 class PrepareRecipeIngredientRecipesSerializer(serializers.ModelSerializer):
-    ingredient = IngredientSerializer(read_only=True)
+    ingredient = IngredientSerializerRequiredId(read_only=True)
 
     class Meta:
         model = IngredientsRecipes

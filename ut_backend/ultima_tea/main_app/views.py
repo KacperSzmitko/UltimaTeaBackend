@@ -1,5 +1,6 @@
 from django.db.models import query
 from django.db.models.query import QuerySet
+from django.http import request
 from rest_framework.views import APIView
 from rest_framework import permissions
 from rest_framework.response import Response
@@ -15,7 +16,6 @@ from rest_framework.decorators import action
 
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-# TODO Add table to store info about rated recipes
 
 MAX_RECIPES_PER_USER = 50
 
@@ -273,9 +273,8 @@ class ListPublicRecipes(generics.ListAPIView):
     def get_queryset(self):
         try:
             return filter_recipes(
-                # TODO Add user != requet.user
                 self.request.query_params,
-                Recipes.objects.filter(is_public=True),
+                Recipes.objects.filter(Q(is_public=True) & ~Q(author=self.request.user)),
             )
         except ValueError:
             raise WrongQuerystringValue()
@@ -382,9 +381,33 @@ class UserRecipesViewSet(viewsets.ModelViewSet):
             recipe.save()
         return Response({'score': recipe.score}, status=201)
 
-class IngredientsViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet, mixins.ListModelMixin):
+class IngredientsViewSet(viewsets.ModelViewSet):
     serializer_class = IngredientSerializer
     queryset = Ingredients.objects.all()
+    permission_classes_by_action = {
+        "list": [permissions.IsAuthenticated],
+    }
+
+    def get_permissions(self):
+        if self.action in self.permission_classes_by_action:
+            return [
+                permission()
+                for permission in self.permission_classes_by_action[self.action]
+            ]
+        else:
+            return [permissions.IsAdminUser()]
+
+    def list(self, request, *args, **kwargs):
+        self.check_permissions(request)
+        return super().list(request, *args, **kwargs)
+
+    def retrieve(self, request, *args, **kwargs):
+        self.check_permissions(request)
+        return super().retrieve(request, *args, **kwargs)
+
+class TeasViewSet(viewsets.ModelViewSet):
+    serializer_class = TeaSerializer
+    queryset = Teas.objects.all()
     permission_classes_by_action = {
         "list": [permissions.IsAuthenticated],
     }
@@ -421,17 +444,6 @@ class ListTeas(generics.ListAPIView):
     def list(self, request, *args, **kwargs):
         self.check_permissions(request)
         return super().list(request, *args, **kwargs)
-
-
-class ListIngredients(generics.ListAPIView):
-    queryset = Ingredients.objects.all()
-    permission_classes = [permissions.IsAuthenticated]
-    serializer_class = IngredientSerializer
-
-    def list(self, request, *args, **kwargs):
-        self.check_permissions(request)
-        return super().list(request, *args, **kwargs)
-
 
 class SendRecipeView(APIView):
     queryset = IngredientsRecipes.objects.all()

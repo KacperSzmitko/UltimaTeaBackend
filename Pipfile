@@ -19,6 +19,7 @@ pillow = "*"
 requests = "*"
 celery = "*"
 drf-yasg = "*"
+python-dotenv = "*"
 
 [requires]
 python_version = "3.9"

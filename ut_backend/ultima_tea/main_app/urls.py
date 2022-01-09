@@ -8,6 +8,9 @@ recipes_router = DefaultRouter()
 recipes_router.register("recipes", UserRecipesViewSet)
 ingredients_router = DefaultRouter()
 ingredients_router.register("ingredients", IngredientsViewSet)
+teas_router = DefaultRouter()
+teas_router.register("teas", TeasViewSet)
+
 
 urlpatterns = [
     # path("machine/<slug:pk>", GetMachineInfo.as_view(), name="get_machine"),
@@ -16,6 +19,7 @@ urlpatterns = [
     path("send_recipe/", SendRecipeView.as_view(), name="send_recipe"),
     path("", include(recipes_router.urls), name="user_recipes"),
     path("", include(ingredients_router.urls), name="ingredients"),
+    path("", include(teas_router.urls), name="teas"),
     path("machine/", MachineInfoViewSet.as_view(), name="machine"),
     path(
         "machine/containers/",
@@ -38,7 +42,6 @@ urlpatterns = [
         name="delete_recipe_ingredient",
     ),
     path("teas/", ListTeas.as_view(), name="list_teas"),
-    path("ingredients/", ListIngredients.as_view(), name="list_teas"),
     path("send_recipe/", SendRecipeView.as_view(), name="send_recipe"),
     path(
         "favourites_edit/<int:pk>/",

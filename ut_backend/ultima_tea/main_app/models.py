@@ -11,7 +11,7 @@ class State(models.IntegerChoices):
 
 class Ingredients(models.Model):
     ingredient_name = models.CharField(max_length=32)
-    type = models.IntegerField(choices=State.choices)
+    type = models.IntegerField(choices=State.choices, default=0)
     opening_percentage = models.IntegerField(default=0)
     pass_time = models.IntegerField(default=0)
     weight_offset = models.IntegerField(default=0)
