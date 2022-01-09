@@ -51,7 +51,7 @@ class Machine(models.Model):
         OFF = 0
         ON = 1
 
-    machine_id = models.CharIntegerFieldField(primary_key=True)
+    machine_id = models.CharField(primary_key=True, max_length=32)
     brewing_temperature = models.FloatField(default=0, null=True)
     air_temperature = models.FloatField(default=0, null=True)
     mug_temperature = models.FloatField(default=0, null=True)
