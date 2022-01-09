@@ -1,0 +1,22 @@
+version: '3.7'
+
+services:
+  ut_backend:
+    volumes:
+      - static:/static
+    env_file:
+      - .env
+    build: ./ut_backend
+    ports:
+      - "8000:8000"
+  nginx:
+    build: ./nginx
+    volumes:
+      - static:/static
+    ports:
+      - "80:80"
+    depends_on:
+      - ut_backend
+
+volumes:
+  static:
