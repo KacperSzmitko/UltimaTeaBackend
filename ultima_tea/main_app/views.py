@@ -130,7 +130,12 @@ class MachineInfoViewSet(generics.ListAPIView):
 
     def list(self, request, *args, **kwargs):
         self.check_permissions(request)
-        return super().list(request, *args, **kwargs)
+        obj = self.get_queryset()[0]
+        result = super().list(request, *args, **kwargs)
+        if (obj.state_of_the_tea_making_process == 5):
+            obj.state_of_the_tea_making_process = 0
+            obj.save()
+        return result
 
     def get_queryset(self):
         return Machine.objects.filter(customuser=self.request.user)
