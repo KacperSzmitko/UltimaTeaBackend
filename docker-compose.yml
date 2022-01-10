@@ -13,6 +13,8 @@ services:
     build: ./nginx
     volumes:
       - static:/static
+    env_file:
+      - nginx.env
     ports:
       - "80:80"
     depends_on:
