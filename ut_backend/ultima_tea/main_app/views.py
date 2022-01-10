@@ -73,6 +73,10 @@ class WrongQuerystringValue(APIException):
     default_detail = "Invalid query string. Value must be numeric type."
     default_code = "wrong_query_string"
 
+class NoMachineException(APIException):
+    status_code = 404
+    default_detail = "Your account has no machine. Contact administrator."
+    default_code = "no_machine"
 
 class IsOwnerOrAdmin(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
@@ -119,25 +123,98 @@ class IsAuthorOrAdmin(permissions.BasePermission):
         return True
 
 
-class MachineInfoViewSet(generics.ListAPIView):
+class MachineInfoViewSet(
+    viewsets.GenericViewSet,
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    mixins.DestroyModelMixin,
+):
     """
     List all user machines info
+    Query params: all=bool - List all machines. Require admin permissions.
     """
 
     serializer_class = MachineInfoSerializer
     permission_classes = [IsOwnerOrAdmin]
     queryset = Machine.objects.all()
+    permission_classes_by_action = {
+        "list": [IsOwnerOrAdmin],
+    }
 
     def list(self, request, *args, **kwargs):
         self.check_permissions(request)
-        obj = self.get_queryset()[0]
+        if self.request.query_params.get('all', False):
+            obj = self.get_queryset()
+        else:
+            obj = self.get_queryset()
+            if len(obj) == 0:
+                raise NoMachineException()
+            if obj.state_of_the_tea_making_process == 5:
+                obj.state_of_the_tea_making_process = 0
+                obj.save()
         result = super().list(request, *args, **kwargs)
-        if (obj.state_of_the_tea_making_process == 5):
-            obj.state_of_the_tea_making_process = 0
-            obj.save()
         return result
 
+    def create(self, request, *args, **kwargs):
+        self.check_permissions(request)
+        machine = MachineInfoSerializer(data=request.data)
+        if machine.is_valid(raise_exception=True):
+            machine.save()
+        tea_container1 = TeasConatainerSerializer(
+            data={
+                "container_number": 1,
+                "machine": request.data["machine_id"],
+                "tea": None,
+            }
+        )
+        tea_container2 = TeasConatainerSerializer(
+            data={
+                "container_number": 2,
+                "machine": request.data["machine_id"],
+                "tea": None,
+            }
+        )
+        ing_container1 = IngredientsConatainerSerializer(
+            data={
+                "container_number": 3,
+                "machine": request.data["machine_id"],
+                "ingredient": None,
+            }
+        )
+        ing_container2 = IngredientsConatainerSerializer(
+            data={
+                "container_number": 4,
+                "machine": request.data["machine_id"],
+                "ingredient": None,
+            }
+        )
+        if (
+            tea_container1.is_valid(raise_exception=True)
+            and tea_container2.is_valid(raise_exception=True)
+            and ing_container1.is_valid(raise_exception=True)
+            and ing_container2.is_valid(raise_exception=True)
+        ):
+            tea_container1.save()
+            tea_container2.save()
+            ing_container1.save()
+            ing_container2.save()
+        return Response(machine.data)
+
+    def get_permissions(self):
+        try:
+            # return permission_classes depending on `action`
+            return [
+                permission()
+                for permission in self.permission_classes_by_action[self.action]
+            ]
+        except KeyError:
+            # action is not set return default permission_classes
+            return [permissions.IsAdminUser()]
+
     def get_queryset(self):
+        if self.request.user.is_superuser:
+            if self.request.query_params.get('all', False):
+                return Machine.objects.all()
         return Machine.objects.filter(customuser=self.request.user)
 
 
@@ -274,7 +351,9 @@ class ListPublicRecipes(generics.ListAPIView):
         try:
             return filter_recipes(
                 self.request.query_params,
-                Recipes.objects.filter(Q(is_public=True) & ~Q(author=self.request.user)),
+                Recipes.objects.filter(
+                    Q(is_public=True) & ~Q(author=self.request.user)
+                ),
             )
         except ValueError:
             raise WrongQuerystringValue()
@@ -284,9 +363,11 @@ class ListPublicRecipes(generics.ListAPIView):
         queryset = self.get_queryset()
         page = self.paginate_queryset(queryset)
         if page is not None:
-            serializer = RecipesSerializer(page, many=True, context={'user': request.user})
+            serializer = RecipesSerializer(
+                page, many=True, context={"user": request.user}
+            )
             return self.get_paginated_response(serializer.data)
-        serializer = RecipesSerializer(page, many=True, context={'user': request.user})
+        serializer = RecipesSerializer(page, many=True, context={"user": request.user})
         return Response(serializer.data)
 
 
@@ -364,7 +445,7 @@ class UserRecipesViewSet(viewsets.ModelViewSet):
                         (recipe.score * recipe.votes) - prev_score + obj.score
                     ) / (recipe.votes)
                     recipe.save()
-                    return Response({'score': recipe.score}, status=200)
+                    return Response({"score": recipe.score}, status=200)
             except VotedRecipes.DoesNotExist:
                 pass
         serializer = RecipeVoteSerializer(
@@ -379,7 +460,8 @@ class UserRecipesViewSet(viewsets.ModelViewSet):
             )
             recipe.votes += 1
             recipe.save()
-        return Response({'score': recipe.score}, status=201)
+        return Response({"score": recipe.score}, status=201)
+
 
 class IngredientsViewSet(viewsets.ModelViewSet):
     serializer_class = IngredientSerializer
@@ -404,6 +486,7 @@ class IngredientsViewSet(viewsets.ModelViewSet):
     def retrieve(self, request, *args, **kwargs):
         self.check_permissions(request)
         return super().retrieve(request, *args, **kwargs)
+
 
 class TeasViewSet(viewsets.ModelViewSet):
     serializer_class = TeaSerializer
@@ -445,19 +528,20 @@ class ListTeas(generics.ListAPIView):
         self.check_permissions(request)
         return super().list(request, *args, **kwargs)
 
+
 class SendRecipeView(APIView):
     queryset = IngredientsRecipes.objects.all()
     permission_classes = (permissions.IsAuthenticated,)
     serializer_class = PrepareRecipeSerializer
 
-
-    @swagger_auto_schema(operation_description="Sending recipe to machine", 
+    @swagger_auto_schema(
+        operation_description="Sending recipe to machine",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
-            required=['id'],
+            required=["id"],
             properties={
-                'id': openapi.Schema(type=openapi.TYPE_INTEGER),
-                'tea_portion': openapi.Schema(type=openapi.TYPE_INTEGER)
+                "id": openapi.Schema(type=openapi.TYPE_INTEGER),
+                "tea_portion": openapi.Schema(type=openapi.TYPE_INTEGER),
             },
         ),
     )
@@ -468,7 +552,7 @@ class SendRecipeView(APIView):
         except KeyError:
             raise ValidationError({"id": "Field is required."})
 
-        validation_errors = [] 
+        validation_errors = []
         try:
             recipe = Recipes.objects.get(pk=id)
         except ObjectDoesNotExist:
@@ -492,7 +576,9 @@ class SendRecipeView(APIView):
                     validation_errors.append("Not enough tea herbs in container.")
                 break
         if no_tea:
-            validation_errors.append("Given tea type is not available in your tea containers.")
+            validation_errors.append(
+                "Given tea type is not available in your tea containers."
+            )
 
         ingredient_containers = MachineContainers.objects.filter(
             Q(machine=request.user.machine) & Q(container_number__gte=3)
@@ -509,10 +595,14 @@ class SendRecipeView(APIView):
                         validation_errors.append("Not enough ingredient in container.")
                     break
             if no_ingredient:
-                validation_errors.append("Ingredient {}, of required ammount: {}, is not avaible in your machine.".format(ingredient.ingredient, ingredient.ammount))
+                validation_errors.append(
+                    "Ingredient {}, of required ammount: {}, is not avaible in your machine.".format(
+                        ingredient.ingredient, ingredient.ammount
+                    )
+                )
         if not machine.water_container_weight >= (recipe.tea_portion + 60):
             validation_errors.append("Not enough water.")
-        
+
         if len(validation_errors) > 0:
             raise ValidationError({"detail": validation_errors})
 

@@ -50,6 +50,7 @@ class IngredientsConatainerSerializer(serializers.ModelSerializer):
             "ammount",
             "ingredient",
             "container_number",
+            "machine"
         )
 
 
@@ -63,6 +64,7 @@ class TeasConatainerSerializer(serializers.ModelSerializer):
             "ammount",
             "tea",
             "container_number",
+            "machine"
         )
 
 

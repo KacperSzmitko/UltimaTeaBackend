@@ -10,6 +10,8 @@ ingredients_router = DefaultRouter()
 ingredients_router.register("ingredients", IngredientsViewSet)
 teas_router = DefaultRouter()
 teas_router.register("teas", TeasViewSet)
+machine_router = DefaultRouter()
+machine_router.register("machine", MachineInfoViewSet)
 
 
 urlpatterns = [
@@ -20,7 +22,7 @@ urlpatterns = [
     path("", include(recipes_router.urls), name="user_recipes"),
     path("", include(ingredients_router.urls), name="ingredients"),
     path("", include(teas_router.urls), name="teas"),
-    path("machine/", MachineInfoViewSet.as_view(), name="machine"),
+    path("", include(machine_router.urls), name="machine"),
     path(
         "machine/containers/",
         GetMachineContainers.as_view(),
