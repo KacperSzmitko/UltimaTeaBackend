@@ -19,11 +19,7 @@ urlpatterns = [
     path("public_recipes/", ListPublicRecipes.as_view(), name="list_public_recipes"),
     path("check_token/", CheckTokenView.as_view(), name='check_token'),
     path("send_recipe/", SendRecipeView.as_view(), name="send_recipe"),
-    path("", include(recipes_router.urls), name="user_recipes"),
-    path("", include(ingredients_router.urls), name="ingredients"),
-    path("", include(teas_router.urls), name="teas"),
-    path("", include(machine_router.urls), name="machine"),
-    path(
+        path(
         "machine/containers/",
         GetMachineContainers.as_view(),
         name="list_machine_containers",
@@ -38,6 +34,10 @@ urlpatterns = [
         UpdateIngredientContainersView.as_view(),
         name="update_ingredient_container",
     ),
+    path("", include(recipes_router.urls), name="user_recipes"),
+    path("", include(ingredients_router.urls), name="ingredients"),
+    path("", include(teas_router.urls), name="teas"),
+    path("", include(machine_router.urls), name="machine"),
     path(
         "recipe_ingredient/<int:pk>/",
         DeleteRecipeIngredient.as_view(),

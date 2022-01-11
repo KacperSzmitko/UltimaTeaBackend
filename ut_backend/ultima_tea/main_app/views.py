@@ -149,6 +149,7 @@ class MachineInfoViewSet(
             obj = self.get_queryset()
             if len(obj) == 0:
                 raise NoMachineException()
+            obj = obj[0]
             if obj.state_of_the_tea_making_process == 5:
                 obj.state_of_the_tea_making_process = 0
                 obj.save()
@@ -237,7 +238,13 @@ class UpdateTeaContainersView(generics.UpdateAPIView):
     queryset = MachineContainers.objects.all()
 
     def update(self, request, pk, *args, **kwargs):
-        data = super().update(request, pk, *args, **kwargs)
+        super().update(request, pk, *args, **kwargs)
+        container = MachineContainers.objects.get(pk=pk)
+        if container.tea is not None:
+            data = TeaSerializer(container.tea)
+            data = data.data
+        else:
+            data = {"id": None}
         machine = request.user.machine
         if machine.machine_status == Machine.MachineStates.OFF:
             containers = MachineContainers.objects.filter(
@@ -256,12 +263,10 @@ class UpdateTeaContainersView(generics.UpdateAPIView):
             )
         else:
             container = MachineContainers.objects.get(pk=pk)
-            if container.tea is not None:
-                data = TeaSerializer(container.tea)
             update_single_container.delay(
-                data.data, container.container_number, machine.machine_id
+                data, container.container_number, machine.machine_id
             )
-        return Response(data.data)
+        return Response(data)
 
     def get_queryset(self):
         return MachineContainers.objects.filter(
@@ -284,7 +289,13 @@ class UpdateIngredientContainersView(generics.UpdateAPIView):
         )
 
     def update(self, request, pk, *args, **kwargs):
-        data = super().update(request, pk, *args, **kwargs)
+        super().update(request, pk, *args, **kwargs)
+        container = MachineContainers.objects.get(pk=pk)
+        if container.ingredient is not None:
+            data = IngredientSerializer(container.ingredient)
+            data = data.data
+        else:
+            data = {"id": None}
         machine = request.user.machine
         if machine.machine_status == Machine.MachineStates.OFF:
             containers = MachineContainers.objects.filter(
@@ -302,9 +313,8 @@ class UpdateIngredientContainersView(generics.UpdateAPIView):
                 machine.machine_id,
             )
         else:
-            container = MachineContainers.objects.get(pk=pk)
             update_single_container.delay(
-                data.data, container.container_number, machine.machine_id
+                data, container.container_number, machine.machine_id
             )
             data = IngredientSerializer(container.ingredient)
         return Response(data.data)
@@ -352,7 +362,7 @@ class ListPublicRecipes(generics.ListAPIView):
             return filter_recipes(
                 self.request.query_params,
                 Recipes.objects.filter(
-                    Q(is_public=True) & ~Q(author=self.request.user)
+                    Q(is_public=True)
                 ),
             )
         except ValueError:
