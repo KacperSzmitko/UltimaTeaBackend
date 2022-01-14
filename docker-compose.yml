@@ -7,14 +7,12 @@ services:
     env_file:
       - .env
     build: ./ut_backend
-    ports:
-      - "8000:8000"
   nginx:
     build: ./nginx
     volumes:
       - static:/static
     ports:
-      - "80:80"
+      - "8000:80"
     depends_on:
       - ut_backend
 
