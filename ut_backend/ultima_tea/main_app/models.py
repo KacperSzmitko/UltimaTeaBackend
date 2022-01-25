@@ -1,7 +1,5 @@
 from django.db import models
-from django.db import models
 from authorization.models import CustomUser, Machine
-from django.db.models.deletion import CASCADE, SET_DEFAULT
 
 # Create your models here.
 class State(models.IntegerChoices):
