@@ -21,28 +21,26 @@ from drf_yasg import openapi
 from django.views.generic import RedirectView
 
 schema_view = get_schema_view(
-   openapi.Info(
-      title="UltimaTea Server",
-      default_version='v1',
-      description="Server handeling all database manipulation",
-      terms_of_service="https://www.google.com/policies/terms/",
-      contact=openapi.Contact(email="contact@snippets.local"),
-      license=openapi.License(name="Test License"),
-   ),
-   public=True,
-   permission_classes=(permissions.AllowAny,),
+    openapi.Info(
+        title="UltimaTea Server",
+        default_version="v1",
+        description="Server handeling all database manipulation",
+        terms_of_service="https://www.google.com/policies/terms/",
+        contact=openapi.Contact(email="contact@snippets.local"),
+        license=openapi.License(name="Test License"),
+    ),
+    public=True,
+    permission_classes=(permissions.AllowAny,),
 )
 
 urlpatterns = [
-    path('api/swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    path(
+        "api/swagger/",
+        schema_view.with_ui("swagger", cache_timeout=0),
+        name="schema-swagger-ui",
+    ),
     # path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
     path("api/admin/", admin.site.urls),
     path("api/", include("authorization.urls", namespace="auth")),
     path("api/", include("main_app.urls", namespace="main")),
 ]
-
-
-
-
-
-
