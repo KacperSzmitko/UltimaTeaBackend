@@ -329,7 +329,10 @@ class PrepareRecipeSerializer(serializers.ModelSerializer):
         )
 
     def get_currnet_tea_portion(self, obj):
-        currnet_tea_portion = self.context.get("tea_portion", obj["tea_portion"])
+        try:
+            currnet_tea_portion = self.context.get("tea_portion", obj["tea_portion"])
+        except TypeError:
+            currnet_tea_portion = self.context.get("tea_portion", obj.tea_portion)
         if currnet_tea_portion != "":
             return currnet_tea_portion
         return None

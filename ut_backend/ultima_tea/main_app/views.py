@@ -608,10 +608,8 @@ class SendRecipeView(APIView):
                         break
                 if no_ingredient:
                     validation_errors.append(
-                        "Ingredient {}, of required ammount: {}, is not avaible in your machine.".format(
-                            ingredient["ingredient"], ingredient["ammount"]
+                        f"Ingredient: {ingredient['ingredient']['ingredient_name']}, of required ammount: {ingredient['ammount']}, is not avaible in your machine."
                         )
-                    )
             if not machine.water_container_weight >= (recipe["tea_portion"] + 60):
                 validation_errors.append("Not enough water.")
 
