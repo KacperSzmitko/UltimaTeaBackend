@@ -543,9 +543,13 @@ class SendRecipeView(APIView):
 
         if recipe.is_valid(raise_exception=True):
             recipe = recipe.data
-            print(recipe)
             validation_errors = []
             machine = Machine.objects.get(pk=request.user.machine.machine_id)
+            if (
+                machine.state_of_the_tea_making_process
+                != Machine.StatesOfTeaMakingProcess.READY_TO_WORK
+            ):
+                validation_errors.append("Tea is alredy making.")
             if machine.machine_status == 0:
                 validation_errors.append("Machine is not connected.")
             if not machine.is_mug_ready:
@@ -574,7 +578,7 @@ class SendRecipeView(APIView):
             for ingredient in ingredients:
                 for ingredient_container in ingredient_containers:
                     no_ingredient = True
-                    if ingredient_container.ingredient == ingredient["ingredient"]:
+                    if ingredient_container.ingredient.id == ingredient["ingredient"]["id"]:
                         if ingredient_container.ammount >= ingredient["ammount"]:
                             no_ingredient = False
                         else:
@@ -586,7 +590,7 @@ class SendRecipeView(APIView):
                     validation_errors.append(
                         f"Ingredient: {ingredient['ingredient']['ingredient_name']}, of required ammount: {ingredient['ammount']}, is not avaible in your machine."
                     )
-            if not machine.water_container_weight >= (recipe["tea_portion"] + 60):
+            if not machine.water_container_weight >= (recipe["tea_portion"] + 30):
                 validation_errors.append("Not enough water.")
 
             if len(validation_errors) > 0:
