@@ -33,6 +33,7 @@ class SchemaGenerator(OpenAPISchemaGenerator):
     return schema
 
 schema_view = get_schema_view(
+<<<<<<< HEAD
    openapi.Info(
       title="UltimaTea Server",
       default_version='v1',
@@ -45,6 +46,18 @@ schema_view = get_schema_view(
    permission_classes=(permissions.AllowAny,),
 #    urlconf="management_server.api.urls",
    generator_class=SchemaGenerator,
+=======
+    openapi.Info(
+        title="UltimaTea Server",
+        default_version="v1",
+        description="Server handeling all database manipulation",
+        terms_of_service="https://www.google.com/policies/terms/",
+        contact=openapi.Contact(email="contact@snippets.local"),
+        license=openapi.License(name="Test License"),
+    ),
+    public=True,
+    permission_classes=(permissions.AllowAny,),
+>>>>>>> master
 )
 
 urlpatterns = [
@@ -54,9 +67,3 @@ urlpatterns = [
     path("", include("authorization.urls", namespace="auth")),
     path("", include("main_app.urls", namespace="main")),
 ]
-
-
-
-
-
-

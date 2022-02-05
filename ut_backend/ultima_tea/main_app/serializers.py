@@ -18,6 +18,7 @@ class IngredientSerializer(serializers.ModelSerializer):
         "Convert enum to readable value"
         return obj.get_type_display()
 
+
 class IngredientSerializerRequiredId(serializers.ModelSerializer):
     type = serializers.SerializerMethodField()
     id = serializers.IntegerField(required=True)
@@ -27,8 +28,11 @@ class IngredientSerializerRequiredId(serializers.ModelSerializer):
         fields = "__all__"
 
     def get_type(self, obj):
-        "Convert enum to readable value"
-        return obj.get_type_display()
+        try:
+            "Convert enum to readable value"
+            return obj.get_type_display()
+        except AttributeError:
+            return 1
 
 
 class TeaSerializer(serializers.ModelSerializer):
@@ -39,19 +43,12 @@ class TeaSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-
 class IngredientsConatainerSerializer(serializers.ModelSerializer):
     ingredient = IngredientSerializerRequiredId(required=True, allow_null=True)
 
     class Meta:
         model = MachineContainers
-        fields = (
-            "id",
-            "ammount",
-            "ingredient",
-            "container_number",
-            "machine"
-        )
+        fields = ("id", "ammount", "ingredient", "container_number", "machine")
 
 
 class TeasConatainerSerializer(serializers.ModelSerializer):
@@ -59,13 +56,7 @@ class TeasConatainerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = MachineContainers
-        fields = (
-            "id",
-            "ammount",
-            "tea",
-            "container_number",
-            "machine"
-        )
+        fields = ("id", "ammount", "tea", "container_number", "machine")
 
 
 class UpdateIngredientsConatainerSerializer(serializers.ModelSerializer):
@@ -306,7 +297,7 @@ class RecipesSerializer(serializers.ModelSerializer):
 
 
 class PrepareRecipeIngredientRecipesSerializer(serializers.ModelSerializer):
-    ingredient = IngredientSerializerRequiredId(read_only=True)
+    ingredient = IngredientSerializerRequiredId(required=True)
 
     class Meta:
         model = IngredientsRecipes
@@ -317,9 +308,10 @@ class PrepareRecipeIngredientRecipesSerializer(serializers.ModelSerializer):
 
 
 class PrepareRecipeSerializer(serializers.ModelSerializer):
-    tea_type = TeaSerializer(read_only=True)
+    tea_type = TeaSerializer()
     ingredients = PrepareRecipeIngredientRecipesSerializer(many=True)
     currnet_tea_portion = serializers.SerializerMethodField(required=False)
+    id = serializers.IntegerField(required=False, write_only=False)
 
     class Meta:
         model = Recipes
@@ -337,7 +329,10 @@ class PrepareRecipeSerializer(serializers.ModelSerializer):
         )
 
     def get_currnet_tea_portion(self, obj):
-        currnet_tea_portion = self.context.get("tea_portion", obj.tea_portion)
+        try:
+            currnet_tea_portion = self.context.get("tea_portion", obj["tea_portion"])
+        except TypeError:
+            currnet_tea_portion = self.context.get("tea_portion", obj.tea_portion)
         if currnet_tea_portion != "":
             return currnet_tea_portion
         return None
