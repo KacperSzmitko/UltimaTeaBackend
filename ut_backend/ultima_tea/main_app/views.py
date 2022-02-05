@@ -240,34 +240,22 @@ class UpdateTeaContainersView(generics.UpdateAPIView):
     queryset = MachineContainers.objects.all()
 
     def update(self, request, pk, *args, **kwargs):
-        super().update(request, pk, *args, **kwargs)
-        container = MachineContainers.objects.get(pk=pk)
-        if container.tea is not None:
-            data = TeaSerializer(container.tea)
-            data = data.data
-        else:
-            data = {"id": None}
+        data = super().update(request, pk, *args, **kwargs)
         machine = request.user.machine
-        if machine.machine_status == Machine.MachineStates.OFF:
-            containers = MachineContainers.objects.filter(
-                machine__customuser=self.request.user
-            )
-            ingredients = containers.filter(container_number__gte=3)
-            teas = containers.filter(container_number__lte=2)
-            ingredients = IngredientsConatainerSerializer(ingredients, many=True)
-            teas = TeasConatainerSerializer(teas, many=True)
-            update_all_containers.delay(
-                {
-                    "tea_containers": teas.data,
-                    "ingredient_containers": ingredients.data,
-                },
-                machine.machine_id,
-            )
-        else:
-            container = MachineContainers.objects.get(pk=pk)
-            update_single_container.delay(
-                data, container.container_number, machine.machine_id
-            )
+        containers = MachineContainers.objects.filter(
+            machine__customuser=self.request.user
+        )
+        ingredients = containers.filter(container_number__gte=3)
+        teas = containers.filter(container_number__lte=2)
+        ingredients = IngredientsConatainerSerializer(ingredients, many=True)
+        teas = TeasConatainerSerializer(teas, many=True)
+        update_all_containers.delay(
+            {
+                "tea_containers": teas.data,
+                "ingredient_containers": ingredients.data,
+            },
+            machine.machine_id,
+        )
         return Response(data)
 
     def get_queryset(self):
@@ -291,35 +279,23 @@ class UpdateIngredientContainersView(generics.UpdateAPIView):
         )
 
     def update(self, request, pk, *args, **kwargs):
-        super().update(request, pk, *args, **kwargs)
-        container = MachineContainers.objects.get(pk=pk)
-        if container.ingredient is not None:
-            data = IngredientSerializer(container.ingredient)
-            data = data.data
-        else:
-            data = {"id": None}
+        data = super().update(request, pk, *args, **kwargs)
         machine = request.user.machine
-        if machine.machine_status == Machine.MachineStates.OFF:
-            containers = MachineContainers.objects.filter(
-                machine__customuser=self.request.user
-            )
-            ingredients = containers.filter(container_number__gte=3)
-            teas = containers.filter(container_number__lte=2)
-            ingredients = IngredientsConatainerSerializer(ingredients, many=True)
-            teas = TeasConatainerSerializer(teas, many=True)
-            update_all_containers.delay(
-                {
-                    "tea_containers": teas.data,
-                    "ingredient_containers": ingredients.data,
-                },
-                machine.machine_id,
-            )
-        else:
-            update_single_container.delay(
-                data, container.container_number, machine.machine_id
-            )
-            data = IngredientSerializer(container.ingredient)
-        return Response(data.data)
+        containers = MachineContainers.objects.filter(
+            machine__customuser=self.request.user
+        )
+        ingredients = containers.filter(container_number__gte=3)
+        teas = containers.filter(container_number__lte=2)
+        ingredients = IngredientsConatainerSerializer(ingredients, many=True)
+        teas = TeasConatainerSerializer(teas, many=True)
+        update_all_containers.delay(
+            {
+                "tea_containers": teas.data,
+                "ingredient_containers": ingredients.data,
+            },
+            machine.machine_id,
+        )
+        return Response(data)
 
 
 class GetMachineContainers(generics.ListAPIView):
@@ -630,28 +606,11 @@ class AddToFavouritesView(generics.UpdateAPIView):
         return Recipes.objects.filter(author=self.request.user)
 
     def update(self, request, pk, *args, **kwargs):
-        recipe = Recipes.objects.get(pk=pk)
-        was_favourite = recipe.is_favourite
         data = super().update(request, *args, **kwargs)
         machine = request.user.machine
-        if machine.machine_status == Machine.MachineStates.OFF:
-            # Machine is off
-            recipes = Recipes.objects.filter(
-                Q(author=request.user) & Q(is_favourite=True)
-            )
-            recipes = PrepareRecipeSerializer(recipes, many=True)
-            favourites_edit_offline.delay(recipes.data, machine.machine_id)
-        else:
-
-            recipe = PrepareRecipeSerializer(recipe)
-            if data.data["is_favourite"]:
-                # Add to favourites
-                if not was_favourite:
-                    favourites_edit_online.delay(recipe.data, "add", machine.machine_id)
-            else:
-                if was_favourite:
-                    # Delete from favourites
-                    favourites_edit_online.delay(
-                        {"id": recipe.data["id"]}, "delete", machine.machine_id
-                    )
+        recipes = Recipes.objects.filter(
+            Q(author=request.user) & Q(is_favourite=True)
+        )
+        recipes = PrepareRecipeSerializer(recipes, many=True)
+        favourites_edit_offline.delay(recipes.data, machine.machine_id)
         return data
