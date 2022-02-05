@@ -20,17 +20,31 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from django.views.generic import RedirectView
 
+from rest_framework import permissions
+from drf_yasg.generators import OpenAPISchemaGenerator
+from drf_yasg.views import get_schema_view
+from drf_yasg import openapi
+import os
+
+class SchemaGenerator(OpenAPISchemaGenerator):
+  def get_schema(self, request=None, public=False):
+    schema = super(SchemaGenerator, self).get_schema(request, public)
+    schema.basePath = os.path.join(schema.basePath, 'api/')
+    return schema
+
 schema_view = get_schema_view(
    openapi.Info(
       title="UltimaTea Server",
       default_version='v1',
       description="Server handeling all database manipulation",
       terms_of_service="https://www.google.com/policies/terms/",
-      contact=openapi.Contact(email="contact@snippets.local"),
+      contact=openapi.Contact(email="ultimatea@gmail.com"),
       license=openapi.License(name="Test License"),
    ),
    public=True,
    permission_classes=(permissions.AllowAny,),
+#    urlconf="management_server.api.urls",
+   generator_class=SchemaGenerator,
 )
 
 urlpatterns = [
