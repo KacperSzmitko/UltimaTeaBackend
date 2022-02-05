@@ -256,7 +256,7 @@ class UpdateTeaContainersView(generics.UpdateAPIView):
             },
             machine.machine_id,
         )
-        return Response(data)
+        return data
 
     def get_queryset(self):
         return MachineContainers.objects.filter(
@@ -295,7 +295,7 @@ class UpdateIngredientContainersView(generics.UpdateAPIView):
             },
             machine.machine_id,
         )
-        return Response(data)
+        return data
 
 
 class GetMachineContainers(generics.ListAPIView):
@@ -585,7 +585,7 @@ class SendRecipeView(APIView):
                 if no_ingredient:
                     validation_errors.append(
                         f"Ingredient: {ingredient['ingredient']['ingredient_name']}, of required ammount: {ingredient['ammount']}, is not avaible in your machine."
-                        )
+                    )
             if not machine.water_container_weight >= (recipe["tea_portion"] + 60):
                 validation_errors.append("Not enough water.")
 
@@ -608,9 +608,7 @@ class AddToFavouritesView(generics.UpdateAPIView):
     def update(self, request, pk, *args, **kwargs):
         data = super().update(request, *args, **kwargs)
         machine = request.user.machine
-        recipes = Recipes.objects.filter(
-            Q(author=request.user) & Q(is_favourite=True)
-        )
+        recipes = Recipes.objects.filter(Q(author=request.user) & Q(is_favourite=True))
         recipes = PrepareRecipeSerializer(recipes, many=True)
         favourites_edit_offline.delay(recipes.data, machine.machine_id)
         return data
