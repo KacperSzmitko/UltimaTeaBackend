@@ -41,11 +41,10 @@ class Machine(models.Model):
     class StatesOfTeaMakingProcess(models.IntegerChoices):
         READY_TO_WORK = 0
         SENDING_REQUEST = 1
-        ADDING_TEA_HERBS = 2
-        BOILING_WATER = 3
-        BREWING = 4
-        MIXING = 5
-        DONE = 6
+        BREWING = 2
+        ADDING_INGREDIENTS = 3
+        MIXING = 4
+        DONE = 5
 
     class MachineStates(models.IntegerChoices):
         OFF = 0
